@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Play, Plus, Minus, Cpu, X, Copy, Trash2, ChevronDown, ChevronUp, Clock, FileJson, List, Gauge, Zap, Terminal, Layers, Folder, Database, Layout, Maximize2, Minimize2, Save, FileText, ChevronLeft, ChevronRight, Beaker, Activity, RefreshCw, AlertTriangle, History, Sliders } from 'lucide-react';
+import { Play, Plus, Minus, Cpu, X, Copy, Trash2, ChevronDown, ChevronUp, Clock, FileJson, List, Gauge, Zap, Terminal, Layers, Folder, Database, Layout, Maximize2, Minimize2, Save, FileText, ChevronLeft, ChevronRight, Beaker, Activity, RefreshCw, AlertTriangle, History, Sliders, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { cn } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { RequestConfig, CurlResult } from '../server/modules/curl-engine';
@@ -185,6 +186,20 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
   });
 
   const [isWorkerPoolOpen, setIsWorkerPoolOpen] = useState(false);
+
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('curl_commander_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch (_) {}
+    return 'dark';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('curl_commander_theme', theme);
+    } catch (_) {}
+  }, [theme]);
 
   // Custom terminal-styled modal state
   const [dialog, setDialog] = useState<{
@@ -624,7 +639,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
   };
 
   return (
-    <div className="flex bg-[#0B0D11] h-screen text-slate-300 overflow-hidden font-sans">
+    <div className={cn("flex bg-[#0B0D11] h-screen text-slate-300 overflow-hidden font-sans", theme === 'light' && "theme-light")}>
       {/* Collapsible Sidebar */}
       <motion.aside 
         initial={false}
@@ -646,32 +661,31 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-          <div className="p-2 space-y-6">
             <div className="space-y-1">
-              {!isSidebarCollapsed && <div className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em] mb-2 ml-2">NAVIGATION</div>}
+              {!isSidebarCollapsed && <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2 mt-2">NAVIGATION</div>}
               <button 
                 onClick={() => setView('debugger')}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded text-[11px] font-mono transition-all group",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[11px] font-semibold transition-all group",
                   view === 'debugger' 
-                    ? "bg-slate-800/50 text-emerald-400 border-l-2 border-emerald-500 font-bold" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    ? "bg-slate-800/60 text-emerald-405 border-l-2 border-emerald-500 font-bold" 
+                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                 )}
-                title={isSidebarCollapsed ? "API Debugger" : ""}
+                title={isSidebarCollapsed ? "API Client" : ""}
               >
                 <Terminal size={15} className={cn(
                   "transition-transform",
                   view === 'debugger' ? "text-emerald-500" : "group-hover:scale-110"
                 )} />
-                {!isSidebarCollapsed && <span className="uppercase tracking-tight">DEBUGGER</span>}
+                {!isSidebarCollapsed && <span className="uppercase tracking-wide font-semibold">API CLIENT</span>}
               </button>
               <button 
                 onClick={() => setView('lab')}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded text-[11px] font-mono transition-all group",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[11px] font-semibold transition-all group",
                   view === 'lab' 
-                    ? "bg-slate-800/50 text-emerald-400 border-l-2 border-emerald-500 font-bold" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    ? "bg-slate-800/60 text-emerald-405 border-l-2 border-emerald-500 font-bold" 
+                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                 )}
                 title={isSidebarCollapsed ? "Test Lab" : ""}
               >
@@ -679,15 +693,15 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   "transition-transform",
                   view === 'lab' ? "text-emerald-500" : "group-hover:scale-110"
                 )} />
-                {!isSidebarCollapsed && <span className="uppercase tracking-tight">TEST LAB</span>}
+                {!isSidebarCollapsed && <span className="uppercase tracking-wide font-semibold">TEST LAB</span>}
               </button>
               <button 
                 onClick={() => setView('variables')}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded text-[11px] font-mono transition-all group",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[11px] font-semibold transition-all group",
                   view === 'variables' 
-                    ? "bg-slate-800/50 text-emerald-400 border-l-2 border-emerald-500 font-bold" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    ? "bg-slate-800/60 text-emerald-405 border-l-2 border-emerald-500 font-bold" 
+                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                 )}
                 title={isSidebarCollapsed ? "Environments" : ""}
               >
@@ -695,15 +709,15 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   "transition-transform",
                   view === 'variables' ? "text-emerald-500" : "group-hover:scale-110"
                 )} />
-                {!isSidebarCollapsed && <span className="uppercase tracking-tight">ENVIRONMENTS</span>}
+                {!isSidebarCollapsed && <span className="uppercase tracking-wide font-semibold">ENVIRONMENTS</span>}
               </button>
               <button 
                 onClick={() => setView('history')}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded text-[11px] font-mono transition-all group",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[11px] font-semibold transition-all group",
                   view === 'history' 
-                    ? "bg-slate-800/50 text-emerald-400 border-l-2 border-emerald-500 font-bold" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    ? "bg-slate-800/60 text-emerald-405 border-l-2 border-emerald-500 font-bold" 
+                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                 )}
                 title={isSidebarCollapsed ? "History Logs" : ""}
               >
@@ -711,76 +725,76 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   "transition-transform",
                   view === 'history' ? "text-emerald-500" : "group-hover:scale-110"
                 )} />
-                {!isSidebarCollapsed && <span className="uppercase tracking-tight">HISTORY</span>}
+                {!isSidebarCollapsed && <span className="uppercase tracking-wide font-semibold">HISTORY</span>}
               </button>
             </div>
 
             {!isSidebarCollapsed && (
               <section className="space-y-4">
-                <div className="flex items-center justify-between px-2">
-                  <span className="text-[8px] font-black text-slate-700 uppercase tracking-[0.2em]">COLLECTIONS</span>
+                <div className="flex items-center justify-between px-2 pt-4">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">COLLECTIONS</span>
                   <button 
                     onClick={addCollection}
-                    className="text-slate-600 hover:text-emerald-500 transition-colors"
+                    className="text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                   </button>
                 </div>
                 <div className="space-y-4">
                   {collections.map(col => (
-                    <div key={col.id} className="space-y-1">
-                      <div className="text-[9px] font-mono text-slate-600 px-2 flex items-center justify-between group/col">
-                        <div className="flex items-center gap-2">
-                          <Folder size={10} /> {col.name}
+                    <div key={col.id} className="space-y-1.5">
+                      <div className="text-[10px] font-bold text-slate-305 px-2 flex items-center justify-between group/col">
+                        <div className="flex items-center gap-2.5">
+                          <Folder size={13} className="text-emerald-500" /> {col.name}
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 transition-all">
+                        <div className="flex items-center gap-1.5 opacity-0 group-hover/col:opacity-100 transition-all">
                           <button 
                             onClick={(e) => { e.stopPropagation(); runCollection(col.id); }}
-                            className="p-1 text-slate-600 hover:text-emerald-500 transition-colors"
+                            className="p-1 text-slate-400 hover:text-emerald-500 transition-colors"
                             title="RUN_COLLECTION"
                           >
-                            <Play size={10} fill="currentColor" />
+                            <Play size={11} fill="currentColor" />
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); duplicateCollection(col.id); }}
-                            className="p-1 text-slate-600 hover:text-blue-500 transition-colors"
+                            className="p-1 text-slate-400 hover:text-blue-500 transition-colors"
                             title="DUPLICATE"
                           >
-                            <Copy size={10} />
+                            <Copy size={11} />
                           </button>
                           {col.id !== 'default' && (
                             <button 
                               onClick={(e) => { e.stopPropagation(); deleteCollection(col.id); }}
-                              className="p-1 text-slate-700 hover:text-rose-500 transition-all"
+                              className="p-1 text-slate-500 hover:text-rose-500 transition-all"
                               title="DELETE"
                             >
-                              <Trash2 size={10} />
+                              <Trash2 size={11} />
                             </button>
                           )}
                         </div>
                       </div>
-                      <div className="space-y-0.5 ml-1">
+                      <div className="space-y-1 ml-1">
                         {col.requests.map(req => (
                           <div key={req.id} className="group flex items-center pr-2">
                             <button
-                              onClick={() => { setView('debugger'); createTab(req); }}
-                              className="flex-1 text-left px-3 py-1.5 text-[9px] font-mono text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all flex items-center gap-2 truncate"
+                               onClick={() => { setView('debugger'); createTab(req); }}
+                               className="flex-1 text-left px-3 py-2 text-xs font-mono text-slate-350 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all flex items-center gap-2.5 truncate"
                             >
                               <span className={cn(
-                                "w-6 text-[7px] font-black text-center rounded-[1px] py-0.5",
-                                req.method === 'GET' ? "text-emerald-500 bg-emerald-500/10" :
-                                req.method === 'POST' ? "text-blue-500 bg-blue-500/10" :
-                                req.method === 'GRAPHQL' ? "text-violet-500 bg-violet-500/10" : "text-amber-500 bg-amber-500/10"
+                                "w-7 text-[9px] font-black text-center rounded py-0.5 shrink-0",
+                                req.method === 'GET' ? "text-emerald-400 bg-emerald-500/10" :
+                                req.method === 'POST' ? "text-blue-400 bg-blue-500/10" :
+                                req.method === 'GRAPHQL' ? "text-violet-400 bg-violet-500/10" : "text-amber-400 bg-amber-500/10"
                               )}>
                                 {req.method === 'GRAPHQL' ? 'GQL' : req.method[0]}
                               </span>
-                              <span className="truncate opacity-70">{req.name}</span>
+                              <span className="truncate opacity-80">{req.name}</span>
                             </button>
                             <button 
                               onClick={(e) => { e.stopPropagation(); deleteRequest(col.id, req.id); }}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-700 hover:text-rose-500 transition-all"
+                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-450 hover:text-rose-500 transition-all cursor-pointer"
                             >
-                              <Trash2 size={10} />
+                              <Trash2 size={11} />
                             </button>
                           </div>
                         ))}
@@ -791,13 +805,12 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
               </section>
             )}
           </div>
-        </div>
 
         {!isSidebarCollapsed && (
           <div className="p-3 border-t border-slate-800">
             <button 
               onClick={() => createTab()}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-slate-900 border border-slate-705 text-slate-200 hover:text-white rounded-lg text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-emerald-500/40"
             >
               <Plus size={14} /> NEW_REQ
             </button>
@@ -810,18 +823,41 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         <nav className="flex items-center justify-between px-4 h-12 border-b border-[#1E293B] bg-[#0F1115] shrink-0">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-emerald-500 rounded flex items-center justify-center text-black font-bold text-xs font-mono">C</div>
-              <span className="font-mono font-bold tracking-tighter text-sm uppercase">Curler_Pro</span>
+              <div className="w-6 h-6 bg-emerald-500 rounded flex items-center justify-center text-black font-extrabold text-xs font-mono">H</div>
+              <span className="font-mono font-black tracking-widest text-sm uppercase text-slate-100">HYPERCURL</span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-mono text-slate-500">
-              <span className="text-emerald-500 font-bold">PROJECTS</span>
-              <span className="opacity-40">/</span>
-              <span>TELEMETRY_ENGINE</span>
-              <span className="opacity-40">/</span>
-              <span className="text-slate-200 font-bold">{view.toUpperCase()}</span>
+            <div className="h-4 w-px bg-slate-800"></div>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-slate-450">
+              <span className="opacity-70 font-semibold uppercase">Workspace</span>
+              <span className="opacity-30">/</span>
+              <span className="text-emerald-450 font-bold uppercase">{view === 'debugger' ? 'API CLIENT' : view}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Global Theme Toggle Switcher */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded border cursor-pointer select-none transition-all active:scale-95 text-[10px] font-mono uppercase font-bold",
+                theme === 'light'
+                  ? "bg-amber-500/10 border-amber-500/45 text-amber-600 hover:bg-amber-500/20"
+                  : "bg-slate-900/40 border-slate-800 text-slate-400 hover:text-emerald-450 hover:bg-slate-800"
+              )}
+              title={theme === 'dark' ? "Switch to High-Contrast Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun size={10} className="text-amber-400 animate-pulse" />
+                  <span>LIGHT_MODE</span>
+                </>
+              ) : (
+                <>
+                  <Moon size={10} className="text-slate-400" />
+                  <span>DARK_MODE</span>
+                </>
+              )}
+            </button>
+
             <div className="flex items-center gap-2 px-2 py-1 bg-slate-900/40 rounded border border-slate-800" title={`Redis Type: ${telemetry.redisType}`}>
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full animate-pulse",
@@ -1027,6 +1063,41 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                       ))}
                     </div>
                     
+                    {/* REST vs GraphQL High-Level Workspace Switcher */}
+                    <div className="flex bg-[#0A0C10] border border-slate-800/80 rounded p-0.5 w-full">
+                      <button
+                        onClick={() => {
+                          updateActiveConfig({ method: 'GET' });
+                        }}
+                        type="button"
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-[10px] uppercase font-bold tracking-wider font-mono transition-all",
+                          activeTab.config.method !== 'GRAPHQL'
+                            ? "bg-[#141822] text-emerald-400 border border-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-400 border border-transparent"
+                        )}
+                      >
+                        <Terminal size={11} className={activeTab.config.method !== 'GRAPHQL' ? "text-emerald-400 animate-pulse" : "text-slate-500"} /> REST CLIENT
+                      </button>
+                      <button
+                        onClick={() => {
+                          updateActiveConfig({ method: 'GRAPHQL' });
+                          if (!activeTab.config.url || activeTab.config.url.includes('race-demo') || activeTab.config.url.includes('orders')) {
+                            updateActiveConfig({ url: 'https://countries.trevorblades.com/' });
+                          }
+                        }}
+                        type="button"
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-[10px] uppercase font-bold tracking-wider font-mono transition-all",
+                          activeTab.config.method === 'GRAPHQL'
+                            ? "bg-[#181528] text-violet-400 border border-violet-950/40 shadow-sm"
+                            : "text-slate-500 hover:text-slate-400 border border-transparent"
+                        )}
+                      >
+                        <Zap size={11} className={activeTab.config.method === 'GRAPHQL' ? "text-violet-400 animate-pulse" : "text-slate-500"} /> GraphQL Playground
+                      </button>
+                    </div>
+                    
                     <div className="flex gap-0 ring-1 ring-slate-800 rounded bg-[#0F1115] overflow-hidden focus-within:ring-emerald-500/50 transition-all">
                       <select
                         value={activeTab.config.method}
@@ -1212,9 +1283,9 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
 
                      {activeTab.config.method === 'GRAPHQL' && (
                       <section className="space-y-6">
-                        <div>
+                         <div>
                           <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-3 flex items-center gap-2">
-                             <Layers size={10} className="text-violet-500" /> GraphQL_Query
+                            <Layers size={10} className="text-violet-500" /> GraphQL_Query
                           </label>
                           <textarea
                             value={activeTab.graphqlQuery || ''}
@@ -1292,6 +1363,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   results={activeTab.batchResults}
                   onStart={handleStartLabTest}
                   onAbort={handleAbort}
+                  onChangeConfig={updateActiveConfig}
                 />
               </motion.div>
             )}
@@ -1672,6 +1744,15 @@ function BatchViewer({ results, progress, concurrency, onAbort }: { results: Cur
     : 0;
   const avgResponseTimeStr = avgResponseTime.toFixed(0);
 
+  const recentResults = useMemo(() => {
+    return results.slice(-40).map((r, idx) => ({
+      name: `R${results.length - results.slice(-40).length + idx + 1}`,
+      latency: r.responseTime,
+      status: r.status,
+      success: r.status >= 200 && r.status < 300,
+    }));
+  }, [results]);
+
   if (selectedResult) {
     return (
       <div className="flex flex-col h-full bg-black relative">
@@ -1760,6 +1841,72 @@ function BatchViewer({ results, progress, concurrency, onAbort }: { results: Cur
                <div className={cn("text-base font-black font-mono leading-none", stat.color)}>{stat.val}</div>
              </div>
            ))}
+        </div>
+
+        {/* Real-time Latency Fluctuation Line Chart */}
+        <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-900 space-y-2">
+          <div className="flex justify-between items-center text-[7px] font-black text-slate-500 uppercase tracking-[0.2em]">
+            <span>LATENCY_FLUCTUATIONS (LAST 40 CALLS)</span>
+            {results.length > 0 && <span className="text-blue-400 font-mono text-[8px]">{results[results.length - 1]?.responseTime}ms</span>}
+          </div>
+          <div className="h-20 w-full">
+            {results.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={recentResults} margin={{ top: 2, right: 5, left: -25, bottom: 2 }}>
+                  <XAxis dataKey="name" hide />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#475569', fontSize: 8, fontFamily: 'monospace' }} 
+                    domain={['auto', 'auto']}
+                  />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-[#090D14]/95 border border-slate-800 p-2 text-[9px] font-mono rounded shadow-lg text-slate-300">
+                            <div className="text-slate-500 font-bold mb-1">{data.name}</div>
+                            <div className="flex gap-2">
+                              <span>LATENCY:</span>
+                              <span className="text-blue-400 font-bold">{data.latency}ms</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <span>STATUS:</span>
+                              <span className={data.success ? "text-emerald-500" : "text-rose-500 font-bold"}>
+                                {data.status}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="latency" 
+                    stroke="#10b981" 
+                    strokeWidth={1.5} 
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      if (!payload.success) {
+                        return (
+                          <circle key={props.key} cx={cx} cy={cy} r={2.5} fill="#f43f5e" stroke="none" />
+                        );
+                      }
+                      return null;
+                    }}
+                    activeDot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center border border-dashed border-slate-900 rounded bg-[#090D14]/20">
+                <span className="text-[7.5px] font-mono text-slate-600 uppercase tracking-widest">Awaiting transmissions</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

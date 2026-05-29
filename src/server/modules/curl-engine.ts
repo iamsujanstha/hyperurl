@@ -84,14 +84,74 @@ export class CurlEngine {
       };
     }
 
-    return new Promise((resolve) => {
-      const process = spawn('curl', args);
-      let stdout = '';
-      let stderr = '';
+    try {
+      const isGraphql = config.method === 'GRAPHQL';
+      const method = isGraphql ? 'POST' : config.method;
 
-      const onAbort = () => {
-        process.kill();
-        resolve({
+      // Prepare request headers
+      const finalHeaders: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        ...(isGraphql ? { 'Content-Type': 'application/json' } : {}),
+        ...config.headers
+      };
+
+      // Auto-detect JSON body if Content-Type is missing
+      if (config.body && ['POST', 'PUT', 'PATCH'].includes(config.method) && !finalHeaders['Content-Type']) {
+        try {
+          JSON.parse(config.body);
+          finalHeaders['Content-Type'] = 'application/json';
+        } catch (e) {
+          // Not JSON, skip
+        }
+      }
+
+      // Allow self-signed/staging certs commonly used in API testing
+      if (typeof process !== 'undefined' && process.env) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+      }
+
+      const fetchOptions: any = {
+        method,
+        headers: finalHeaders,
+        redirect: 'follow',
+      };
+
+      if (signal) {
+        fetchOptions.signal = signal;
+      }
+
+      if (config.body && (['POST', 'PUT', 'PATCH'].includes(config.method) || isGraphql)) {
+        fetchOptions.body = config.body;
+      }
+
+      const res = await fetch(config.url, fetchOptions);
+      const responseTime = Date.now() - startTime;
+      
+      const resHeaders: Record<string, string> = {};
+      const headerLines: string[] = [];
+      
+      headerLines.push(`HTTP/1.1 ${res.status} ${res.statusText || 'OK'}`);
+      res.headers.forEach((value, name) => {
+        resHeaders[name.toLowerCase()] = value;
+        headerLines.push(`${name}: ${value}`);
+      });
+
+      const bodyText = await res.text();
+      const rawOutput = `${headerLines.join('\r\n')}\r\n\r\n${bodyText}`;
+
+      return {
+        id,
+        status: res.status,
+        headers: resHeaders,
+        body: bodyText,
+        responseTime,
+        rawOutput,
+        curlCommand
+      };
+    } catch (err: any) {
+      if (err.name === 'AbortError' || signal?.aborted) {
+        return {
           id,
           status: 0,
           headers: {},
@@ -100,50 +160,71 @@ export class CurlEngine {
           rawOutput: 'Request aborted by user',
           error: 'Aborted',
           curlCommand
-        });
-      };
-
-      if (signal) {
-        signal.addEventListener('abort', onAbort, { once: true });
+        };
       }
 
-      process.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
+      // Fallback to real curl spawn if fetch fails for any local network reason or protocol mismatch
+      return new Promise((resolve) => {
+        const process = spawn('curl', args);
+        let stdout = '';
+        let stderr = '';
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      process.on('close', (code) => {
-        if (signal) {
-          signal.removeEventListener('abort', onAbort);
-        }
-        
-        if (signal?.aborted) return;
-
-        const responseTime = Date.now() - startTime;
-        
-        if (code !== 0 && code !== null) { // code is null when killed
+        const onAbort = () => {
+          process.kill();
           resolve({
             id,
             status: 0,
             headers: {},
             body: '',
-            responseTime,
-            rawOutput: stderr || `Process exited with code ${code}`,
-            error: stderr || `Exit code ${code}`,
+            responseTime: Date.now() - startTime,
+            rawOutput: 'Request aborted by user',
+            error: 'Aborted',
             curlCommand
           });
-          return;
+        };
+
+        if (signal) {
+          signal.addEventListener('abort', onAbort, { once: true });
         }
 
-        if (code === null) return; // Should have been handled by onAbort
+        process.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
 
-        const result = this.parseOutput(stdout, id, responseTime, curlCommand);
-        resolve(result);
+        process.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        process.on('close', (code) => {
+          if (signal) {
+            signal.removeEventListener('abort', onAbort);
+          }
+          
+          if (signal?.aborted) return;
+
+          const responseTime = Date.now() - startTime;
+          
+          if (code !== 0 && code !== null) {
+            resolve({
+              id,
+              status: 0,
+              headers: {},
+              body: '',
+              responseTime,
+              rawOutput: `Fetch failed entirely (${err.message}). Fallback curl exited with code ${code}.\n\nCurl stderr: ${stderr}`,
+              error: `Fetch error: ${err.message}. Curl error: ${stderr || `Exit code ${code}`}`,
+              curlCommand
+            });
+            return;
+          }
+
+          if (code === null) return;
+
+          const result = this.parseOutput(stdout, id, responseTime, curlCommand);
+          resolve(result);
+        });
       });
-    });
+    }
   }
 
   private static parseOutput(raw: string, id: string, responseTime: number, curlCommand: string): CurlResult {
