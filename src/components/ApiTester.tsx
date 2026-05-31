@@ -35,6 +35,8 @@ interface Tab {
   result: CurlResult | null;
   batchResults: CurlResult[];
   batchMode: boolean;
+  batchIterations?: number;
+  batchConcurrency?: number;
   showCurl: boolean;
   loading: boolean;
   progress: ProgressUpdate | null;
@@ -127,6 +129,107 @@ function HistoryList() {
   );
 }
 
+function HeaderRow({ 
+  h, 
+  onUpdateKey, 
+  onUpdateValue, 
+  onDelete 
+}: { 
+  h: { id: string, key: string, value: string }, 
+  onUpdateKey: (key: string) => void, 
+  onUpdateValue: (val: string) => void, 
+  onDelete: () => void,
+  key?: string
+}) {
+  const commonHeaders = [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "Accept-Encoding",
+    "Accept-Language",
+    "Cache-Control",
+    "Cookie",
+    "Host",
+    "Origin",
+    "Referer",
+    "User-Agent",
+    "X-API-Key",
+    "X-Request-ID",
+    "Idempotency-Key"
+  ];
+  
+  const isPreset = commonHeaders.includes(h.key) || h.key === '';
+  const [customMode, setCustomMode] = useState(!isPreset);
+  const [tempCustomVal, setTempCustomVal] = useState(h.key);
+
+  return (
+    <div className="flex gap-2 items-center group animate-fadeIn">
+      {customMode ? (
+        <div className="flex-1 flex gap-1 bg-slate-905 border border-slate-800/80 rounded-lg px-2 py-0.5 items-center">
+          <input
+            value={tempCustomVal}
+            onChange={(e) => {
+              setTempCustomVal(e.target.value);
+              onUpdateKey(e.target.value);
+            }}
+            placeholder="Custom Header Key"
+            className="flex-1 bg-transparent text-xs font-mono outline-none text-slate-200 py-1.5 focus:ring-0"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setCustomMode(false);
+              onUpdateKey('');
+              setTempCustomVal('');
+            }}
+            className="text-[10px] text-slate-500 hover:text-emerald-400 font-mono px-2 py-1 bg-slate-950 rounded border border-slate-850 hover:border-slate-800 transition-colors"
+            title="Switch back to presets"
+          >
+            Presets
+          </button>
+        </div>
+      ) : (
+        <select
+          value={h.key}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === '__custom__') {
+              setCustomMode(true);
+            } else {
+              onUpdateKey(val);
+              setTempCustomVal(val);
+            }
+          }}
+          className="flex-1 bg-slate-905 border border-slate-800/80 rounded-lg px-3 py-2.5 text-xs font-mono outline-none focus:border-emerald-500/40 text-slate-200 cursor-pointer"
+        >
+          <option value="">-- Choose Header Key --</option>
+          {commonHeaders.map(ch => (
+            <option key={ch} value={ch}>{ch}</option>
+          ))}
+          <option value="__custom__" className="text-emerald-400 font-bold">✏️ Custom Header Key...</option>
+        </select>
+      )}
+
+      <input
+        value={h.value}
+        onChange={(e) => {
+          onUpdateValue(e.target.value);
+        }}
+        placeholder="Value"
+        className="flex-1 bg-slate-905 border border-slate-800/80 rounded-lg px-3 py-2.5 text-xs font-mono outline-none focus:border-emerald-500/40 text-slate-200"
+      />
+      <button 
+        onClick={onDelete}
+        className="text-slate-500 hover:text-rose-500 p-2 hover:bg-slate-905 border border-transparent hover:border-slate-800 rounded-lg transition-all"
+        title="Remove"
+      >
+        <Trash2 size={13} />
+      </button>
+    </div>
+  );
+}
+
 export function ApiTester({ variables: initialVariables = {} }: { variables?: Record<string, string> }) {
   // Persistence Keys
   const TABS_KEY = 'curl_commander_tabs';
@@ -166,6 +269,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       result: null,
       batchResults: [],
       batchMode: false,
+      batchIterations: 10,
+      batchConcurrency: 5,
       showCurl: false,
       loading: false,
       progress: null
@@ -505,8 +610,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         tabId: activeTabId,
         payload: {
           request: resolvedConfig,
-          iterations: 10, // Default batch
-          concurrency: 5
+          iterations: activeTab.batchIterations || 10,
+          concurrency: activeTab.batchConcurrency || 5
         }
       }));
     } else {
@@ -569,6 +674,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       result: null,
       batchResults: [],
       batchMode: false,
+      batchIterations: 10,
+      batchConcurrency: 5,
       showCurl: false,
       loading: false,
       progress: null
@@ -1118,7 +1225,9 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                             const baseCurl = `curl -X ${method} "${resolved.url}" ${headerString} ${resolved.body ? `-d '${resolved.body.replace(/'/g, "'\\''")}'` : ''}`;
                             
                             if (activeTab.batchMode) {
-                              return `# CONCURRENT_BATCH_MODE (10 REQS / 5 THREADS)\nseq 10 | xargs -I {} -P 5 ${baseCurl}`;
+                              const iters = activeTab.batchIterations || 10;
+                              const threads = activeTab.batchConcurrency || 5;
+                              return `# CONCURRENT_BATCH_MODE (${iters} REQS / ${threads} THREADS)\nseq ${iters} | xargs -I {} -P ${threads} ${baseCurl}`;
                             }
                             return baseCurl;
                           })()}
@@ -1128,6 +1237,46 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-[#0B0D11]">
+                    {/* LHS Batch Mode Customizer */}
+                    {activeTab.batchMode && (
+                      <div className="grid grid-cols-2 gap-3.5 bg-slate-950/45 p-3.5 rounded-xl border border-slate-805/80 mb-1 animate-fadeIn select-none">
+                        <div>
+                          <label className="text-[9.5px] uppercase font-black text-slate-500 tracking-wider block mb-1">
+                            Iterations (Requests)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="2000"
+                            placeholder="10"
+                            value={activeTab.batchIterations ?? ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              updateActiveTab({ batchIterations: isNaN(val) ? undefined : val });
+                            }}
+                            className="w-full bg-slate-900 border border-slate-800/80 rounded px-2.5 py-1.5 text-xs font-mono outline-none focus:border-emerald-500/40 text-emerald-400 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9.5px] uppercase font-black text-slate-500 tracking-wider block mb-1">
+                            Concurrency (Threads)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            placeholder="5"
+                            value={activeTab.batchConcurrency ?? ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              updateActiveTab({ batchConcurrency: isNaN(val) ? undefined : val });
+                            }}
+                            className="w-full bg-slate-900 border border-slate-800/80 rounded px-2.5 py-1.5 text-xs font-mono outline-none focus:border-emerald-500/40 text-emerald-400 font-bold"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                      {/* Parameters and Body implementation */}
                      <section className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -1144,35 +1293,22 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                       </div>
                       <div className="space-y-2">
                         {activeTab.headersList.map((h) => (
-                          <div key={h.id} className="flex gap-2 items-center group animate-fadeIn">
-                            <input
-                              value={h.key}
-                              onChange={(e) => {
-                                const newList = activeTab.headersList.map(item => item.id === h.id ? { ...item, key: e.target.value } : item);
-                                updateActiveTab({ headersList: newList });
-                              }}
-                              placeholder="Header-Key"
-                              className="flex-1 bg-slate-905 border border-slate-800/80 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-emerald-500/40 text-slate-200"
-                            />
-                            <input
-                              value={h.value}
-                              onChange={(e) => {
-                                const newList = activeTab.headersList.map(item => item.id === h.id ? { ...item, value: e.target.value } : item);
-                                updateActiveTab({ headersList: newList });
-                              }}
-                              placeholder="Value"
-                              className="flex-1 bg-slate-905 border border-slate-800/80 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-emerald-500/40 text-slate-200"
-                            />
-                            <button 
-                              onClick={() => {
-                                const newList = activeTab.headersList.filter(item => item.id !== h.id);
-                                updateActiveTab({ headersList: newList });
-                              }}
-                              className="text-slate-500 hover:text-rose-500 p-2 hover:bg-slate-905 border border-transparent hover:border-slate-800 rounded-lg transition-all"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
+                          <HeaderRow
+                            key={h.id}
+                            h={h}
+                            onUpdateKey={(newKey) => {
+                              const newList = activeTab.headersList.map(item => item.id === h.id ? { ...item, key: newKey } : item);
+                              updateActiveTab({ headersList: newList });
+                            }}
+                            onUpdateValue={(newVal) => {
+                              const newList = activeTab.headersList.map(item => item.id === h.id ? { ...item, value: newVal } : item);
+                              updateActiveTab({ headersList: newList });
+                            }}
+                            onDelete={() => {
+                              const newList = activeTab.headersList.filter(item => item.id !== h.id);
+                              updateActiveTab({ headersList: newList });
+                            }}
+                          />
                         ))}
                       </div>
                      </section>
@@ -1463,13 +1599,13 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
 
 // Keep original sub-components below with minor tweaks for tabs if needed...// Sub-components
 function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; val: any; isLast?: boolean; key?: any }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(label !== undefined);
 
   if (val === null) {
     return (
-      <div className="pl-4 py-0.5 select-none font-mono text-[11px]">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mr-1">:</span>}
+        {label && <span className="text-slate-500 mx-1">:</span>}
         <span className="text-slate-500 font-semibold italic">null</span>
         {!isLast && <span className="text-slate-500">,</span>}
       </div>
@@ -1480,9 +1616,9 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
 
   if (type === 'string') {
     return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px] break-all">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] break-all leading-relaxed">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mr-1">:</span>}
+        {label && <span className="text-slate-500 mx-1">:</span>}
         <span className="text-emerald-400">"{val}"</span>
         {!isLast && <span className="text-slate-500">,</span>}
       </div>
@@ -1491,10 +1627,10 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
 
   if (type === 'number') {
     return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px]">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed font-semibold">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
         {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-amber-500 font-bold">{val}</span>
+        <span className="text-amber-500">{val}</span>
         {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
@@ -1502,19 +1638,22 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
 
   if (type === 'boolean') {
     return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px]">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed font-bold">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
         {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-violet-400 font-black">{val.toString()}</span>
+        <span className="text-violet-400">{val.toString()}</span>
         {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
   }
 
   if (Array.isArray(val)) {
-    if (val.length === 0) {
+    const itemsCount = val.length;
+    const itemsText = itemsCount === 1 ? '1 item' : `${itemsCount} items`;
+
+    if (itemsCount === 0) {
       return (
-        <div className="pl-4 py-0.5 font-mono text-[11px]">
+        <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
           <span className="text-slate-600">[]</span>
@@ -1524,32 +1663,51 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
     }
 
     return (
-      <div className="pl-4 py-0.5 font-mono text-[11px]">
-        <div className="flex items-center gap-1.5 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors" onClick={() => setCollapsed(!collapsed)}>
-          <span className={cn("text-slate-500 text-[8px] transition-transform duration-150 inline-block", collapsed ? "-rotate-90" : "rotate-0")}>▼</span>
+      <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
+        <div 
+          className="flex items-center gap-1 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors py-0.5" 
+          onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+        >
+          <span className="text-slate-500 text-[9px] font-sans w-3 text-center inline-block">
+            {collapsed ? '▶' : '▼'}
+          </span>
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
-          <span className="text-slate-400 text-[10px]">Array({val.length})</span>
-          <span className="text-slate-500 ml-1">{"["}</span>
-          {collapsed && <span className="text-slate-500">... ]</span>}
+          {collapsed ? (
+            <span className="text-slate-400">
+              {"[...]"} <span className="text-slate-505 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          ) : (
+            <span className="text-slate-300">
+              {"["} <span className="text-slate-505 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          )}
         </div>
         {!collapsed && (
-          <div className="border-l border-slate-800/40 ml-1.5 pl-3 transition-all">
+          <div className="border-l border-slate-880/45 ml-1 pl-3 transition-all space-y-0.5">
             {val.map((item, idx) => (
-              <JsonInteractiveNode key={idx} val={item} isLast={idx === val.length - 1} />
+              <JsonInteractiveNode key={idx} val={item} isLast={idx === itemsCount - 1} />
             ))}
           </div>
         )}
-        {!collapsed && <div className="text-slate-500 pl-4">{"]"}</div>}
+        {!collapsed && (
+          <div className="text-slate-500 pl-4 py-0.5">
+            {"]"}
+            {!isLast && ","}
+          </div>
+        )}
       </div>
     );
   }
 
   if (type === 'object') {
     const keys = Object.keys(val);
-    if (keys.length === 0) {
+    const itemsCount = keys.length;
+    const itemsText = itemsCount === 1 ? '1 item' : `${itemsCount} items`;
+
+    if (itemsCount === 0) {
       return (
-        <div className="pl-4 py-0.5 font-mono text-[11px]">
+        <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
           <span className="text-slate-600">{"{}"}</span>
@@ -1559,29 +1717,45 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
     }
 
     return (
-      <div className="pl-4 py-0.5 font-mono text-[11px]">
-        <div className="flex items-center gap-1.5 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors" onClick={() => setCollapsed(!collapsed)}>
-          <span className={cn("text-slate-500 text-[8px] transition-transform duration-150 inline-block", collapsed ? "-rotate-90" : "rotate-0")}>▼</span>
+      <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
+        <div 
+          className="flex items-center gap-1 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors py-0.5" 
+          onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+        >
+          <span className="text-slate-500 text-[9px] font-sans w-3 text-center inline-block">
+            {collapsed ? '▶' : '▼'}
+          </span>
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
-          <span className="text-slate-400 font-sans text-[10px]">Object</span>
-          <span className="text-slate-500 ml-1">{"{"}</span>
-          {collapsed && <span className="text-slate-500">... {"}"}</span>}
+          {collapsed ? (
+            <span className="text-slate-400">
+              {"{...}"} <span className="text-slate-505 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          ) : (
+            <span className="text-slate-300">
+              {"{"} <span className="text-slate-505 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          )}
         </div>
         {!collapsed && (
-          <div className="border-l border-slate-800/40 ml-1.5 pl-3 transition-all">
+          <div className="border-l border-slate-880/45 ml-1 pl-3 transition-all space-y-0.5">
             {keys.map((k, idx) => (
-              <JsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === keys.length - 1} />
+              <JsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === itemsCount - 1} />
             ))}
           </div>
         )}
-        {!collapsed && <div className="text-slate-500 pl-4">{"}"}</div>}
+        {!collapsed && (
+          <div className="text-slate-500 pl-4 py-0.5">
+            {"}"}
+            {!isLast && ","}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="pl-4 py-0.5 font-mono text-[11px]">
+    <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
       {label && <span className="text-blue-400 font-bold">"{label}"</span>}
       {label && <span className="text-slate-500 mr-1">:</span>}
       <span className="text-slate-400">{String(val)}</span>
@@ -1749,7 +1923,7 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
                         srcDoc={result.body || ''} 
                         sandbox="allow-scripts" 
                         loading="lazy"
-                        className="w-full h-[400px] bg-white rounded-lg border border-slate-300"
+                        className="w-full h-[600px] bg-white rounded-lg border border-slate-300"
                       />
                     </div>
                   );
@@ -1765,14 +1939,14 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
                         </span>
                         <span className="font-semibold text-slate-500">RENDERED_PREVIEW</span>
                       </div>
-                      <div className="flex items-center justify-center p-8 bg-slate-900/10 border border-slate-900 rounded-lg min-h-[280px]">
+                      <div className="flex items-center justify-center p-8 bg-slate-900/10 border border-slate-900 rounded-lg min-h-[500px]">
                         {bodyStr.startsWith('<svg') ? (
-                          <div dangerouslySetInnerHTML={{ __html: result.body || '' }} className="max-w-full max-h-[350px]" />
+                          <div dangerouslySetInnerHTML={{ __html: result.body || '' }} className="max-w-full max-h-[550px]" />
                         ) : (
                           <img 
                             src={bodyStr.startsWith('data:') ? bodyStr : `data:${contentType};base64,${bodyStr}`} 
                             alt="Response Asset" 
-                            className="max-w-full max-h-[350px] object-contain border border-slate-200 rounded" 
+                            className="max-w-full max-h-[550px] object-contain border border-slate-200 rounded" 
                             referrerPolicy="no-referrer"
                           />
                         )}
@@ -1788,7 +1962,7 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
                     <div className="space-y-3">
                       <div className="flex justify-between items-center text-[9px] text-slate-405 font-mono uppercase bg-slate-900/30 p-2.5 border border-slate-900/80 rounded">
                         <span className="font-bold text-emerald-500 flex items-center gap-2">
-                          <FileJson size={12} /> INTERACTIVE_JSON_EXPLORER
+                          <FileJson size={12} /> Response
                         </span>
                         <span className="text-[8px] font-bold text-slate-500">Click arrows to browse response object</span>
                       </div>

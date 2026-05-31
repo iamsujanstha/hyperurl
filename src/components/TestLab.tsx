@@ -218,15 +218,15 @@ const THEORETICAL_FRAMEWORKS: Record<TestModuleId, {
 };
 
 function LabJsonInteractiveNode({ label, val, isLast = true }: { label?: string; val: any; isLast?: boolean; key?: any }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(label !== undefined);
 
   if (val === null) {
     return (
-      <div className="pl-4 py-0.5 select-none font-mono text-[11px]">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-slate-505 font-semibold italic">null</span>
-        {!isLast && <span className="text-slate-505">,</span>}
+        {label && <span className="text-slate-500 mx-1">:</span>}
+        <span className="text-slate-500 font-semibold italic">null</span>
+        {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
   }
@@ -235,41 +235,44 @@ function LabJsonInteractiveNode({ label, val, isLast = true }: { label?: string;
 
   if (type === 'string') {
     return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px] break-all">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] break-all leading-relaxed">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mr-1">:</span>}
+        {label && <span className="text-slate-500 mx-1">:</span>}
         <span className="text-emerald-400">"{val}"</span>
-        {!isLast && <span className="text-slate-550">,</span>}
+        {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
   }
 
   if (type === 'number') {
     return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px]">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed font-semibold">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
         {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-amber-500 font-bold">{val}</span>
-        {!isLast && <span className="text-slate-550">,</span>}
+        <span className="text-amber-500">{val}</span>
+        {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
   }
 
   if (type === 'boolean') {
     return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px]">
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed font-bold">
         {label && <span className="text-blue-400 font-bold">"{label}"</span>}
         {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-violet-400 font-black">{val.toString()}</span>
-        {!isLast && <span className="text-slate-550">,</span>}
+        <span className="text-violet-400">{val.toString()}</span>
+        {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
   }
 
   if (Array.isArray(val)) {
-    if (val.length === 0) {
+    const itemsCount = val.length;
+    const itemsText = itemsCount === 1 ? '1 item' : `${itemsCount} items`;
+
+    if (itemsCount === 0) {
       return (
-        <div className="pl-4 py-0.5 font-mono text-[11px]">
+        <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
           <span className="text-slate-600">[]</span>
@@ -279,35 +282,51 @@ function LabJsonInteractiveNode({ label, val, isLast = true }: { label?: string;
     }
 
     return (
-      <div className="pl-4 py-0.5 font-mono text-[11px]">
+      <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
         <div 
-          className="flex items-center gap-1.5 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors" 
+          className="flex items-center gap-1 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors py-0.5" 
           onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
         >
-          <span className={cn("text-slate-500 text-[8px] transition-transform duration-150 inline-block", collapsed ? "-rotate-90" : "rotate-0")}>▼</span>
+          <span className="text-slate-500 text-[9px] font-sans w-3 text-center inline-block">
+            {collapsed ? '▶' : '▼'}
+          </span>
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
-          <span className="text-slate-400 text-[10px]">Array({val.length})</span>
-          <span className="text-slate-450 ml-1">{"["}</span>
-          {collapsed && <span className="text-slate-500">... ]</span>}
+          {collapsed ? (
+            <span className="text-slate-400">
+              {"[...]"} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          ) : (
+            <span className="text-slate-300">
+              {"["} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          )}
         </div>
         {!collapsed && (
-          <div className="border-l border-slate-800/40 ml-1.5 pl-3 transition-all">
+          <div className="border-l border-slate-800/40 ml-1 pl-3 transition-all space-y-0.5">
             {val.map((item, idx) => (
-              <LabJsonInteractiveNode key={idx} val={item} isLast={idx === val.length - 1} />
+              <LabJsonInteractiveNode key={idx} val={item} isLast={idx === itemsCount - 1} />
             ))}
           </div>
         )}
-        {!collapsed && <div className="text-slate-500 pl-4">{"]"}{!isLast && ","}</div>}
+        {!collapsed && (
+          <div className="text-slate-500 pl-4 py-0.5">
+            {"]"}
+            {!isLast && ","}
+          </div>
+        )}
       </div>
     );
   }
 
   if (type === 'object') {
     const keys = Object.keys(val);
-    if (keys.length === 0) {
+    const itemsCount = keys.length;
+    const itemsText = itemsCount === 1 ? '1 item' : `${itemsCount} items`;
+
+    if (itemsCount === 0) {
       return (
-        <div className="pl-4 py-0.5 font-mono text-[11px]">
+        <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
           <span className="text-slate-600">{"{}"}</span>
@@ -317,32 +336,45 @@ function LabJsonInteractiveNode({ label, val, isLast = true }: { label?: string;
     }
 
     return (
-      <div className="pl-4 py-0.5 font-mono text-[11px]">
+      <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
         <div 
-          className="flex items-center gap-1.5 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors" 
+          className="flex items-center gap-1 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors py-0.5" 
           onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
         >
-          <span className={cn("text-slate-500 text-[8px] transition-transform duration-150 inline-block", collapsed ? "-rotate-90" : "rotate-0")}>▼</span>
+          <span className="text-slate-500 text-[9px] font-sans w-3 text-center inline-block">
+            {collapsed ? '▶' : '▼'}
+          </span>
           {label && <span className="text-blue-400 font-bold">"{label}"</span>}
           {label && <span className="text-slate-500 mr-1">:</span>}
-          <span className="text-slate-400 font-sans text-[10px]">Object</span>
-          <span className="text-slate-450 ml-1">{"{"}</span>
-          {collapsed && <span className="text-slate-500">... {"}"}</span>}
+          {collapsed ? (
+            <span className="text-slate-400">
+              {"{...}"} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          ) : (
+            <span className="text-slate-300">
+              {"{"} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
+            </span>
+          )}
         </div>
         {!collapsed && (
-          <div className="border-l border-slate-800/40 ml-1.5 pl-3 transition-all">
+          <div className="border-l border-slate-800/40 ml-1 pl-3 transition-all space-y-0.5">
             {keys.map((k, idx) => (
-              <LabJsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === keys.length - 1} />
+              <LabJsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === itemsCount - 1} />
             ))}
           </div>
         )}
-        {!collapsed && <div className="text-slate-500 pl-4">{"}"}{!isLast && ","}</div>}
+        {!collapsed && (
+          <div className="text-slate-500 pl-4 py-0.5">
+            {"}"}
+            {!isLast && ","}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="pl-4 py-0.5 font-mono text-[11px]">
+    <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
       {label && <span className="text-blue-400 font-bold">"{label}"</span>}
       {label && <span className="text-slate-500 mr-1">:</span>}
       <span className="text-slate-400">{String(val)}</span>
@@ -1857,7 +1889,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                         <div className="p-4 bg-black flex items-center justify-between border-b border-slate-800">
                           <div className="flex items-center gap-2">
                              <span className="text-xs font-mono font-black px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">LOG DETAIL</span>
-                             <span className="text-xs font-mono text-slate-400">#{selectedResult.id.slice(0, 8)}</span>
+
                           </div>
                           <button 
                             onClick={() => setSelectedResult(null)}
@@ -1941,7 +1973,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
                           <div className="space-y-2 flex-grow">
                             <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5 select-none">
-                              <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block">Response Payload</span>
+                              <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block">Response</span>
                               <div className="flex gap-1 bg-black/60 p-0.5 rounded border border-slate-800/80">
                                 <button
                                   onClick={() => setPayloadTab('pretty')}
@@ -1967,13 +1999,13 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                 </button>
                               </div>
                             </div>
-                            <div className="bg-black/35 p-3.5 rounded-lg border border-slate-800 text-xs text-emerald-450/90 min-h-[140px] max-h-[360px] overflow-y-auto custom-scrollbar select-text space-y-3">
+                            <div className="bg-black/35 p-3.5 rounded-lg border border-slate-800 text-xs text-emerald-450/90 min-h-[360px] max-h-[750px] overflow-y-auto custom-scrollbar select-text space-y-3">
                               {payloadTab === 'pretty' ? (() => {
                                  const bodyStr = (selectedResult.body || '').trim();
                                  if (!bodyStr) {
                                    return (
                                      <div className="text-slate-500 italic text-xs">
-                                       Empty Payload
+                                       Empty Response
                                      </div>
                                    );
                                  }
@@ -1993,7 +2025,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                          srcDoc={selectedResult.body || ''} 
                                          sandbox="allow-scripts" 
                                          loading="lazy"
-                                         className="w-full h-48 bg-white rounded-lg border border-slate-805"
+                                         className="w-full h-80 bg-white rounded-lg border border-slate-805"
                                        />
                                      </div>
                                    );
@@ -2007,14 +2039,14 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                            <Activity size={10} /> rendered_asset
                                          </span>
                                        </div>
-                                       <div className="flex items-center justify-center p-4 bg-slate-950/60 border border-slate-900 rounded-lg min-h-[120px]">
+                                       <div className="flex items-center justify-center p-4 bg-slate-950/60 border border-slate-900 rounded-lg min-h-[240px]">
                                          {bodyStr.startsWith('<svg') ? (
-                                           <div dangerouslySetInnerHTML={{ __html: selectedResult.body || '' }} className="max-w-full max-h-[150px]" />
+                                           <div dangerouslySetInnerHTML={{ __html: selectedResult.body || '' }} className="max-w-full max-h-[300px]" />
                                          ) : (
                                            <img 
                                              src={bodyStr.startsWith('data:') ? bodyStr : `data:${contentType};base64,${bodyStr}`} 
                                              alt="Response Asset" 
-                                             className="max-w-full max-h-[150px] object-contain border border-slate-850 rounded" 
+                                             className="max-w-full max-h-[300px] object-contain border border-slate-850 rounded" 
                                              referrerPolicy="no-referrer"
                                            />
                                          )}
@@ -2029,11 +2061,11 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                      <div className="space-y-2 select-text font-mono">
                                        <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded select-none">
                                          <span className="font-bold text-emerald-500 flex items-center gap-1">
-                                           <FileJson size={10} /> interactive_json_explorer
+                                           <FileJson size={10} /> Response
                                          </span>
-                                         <span className="text-[8px] text-slate-650 font-semibold">Click arrows to browse</span>
+                                         <span className="text-[8px] text-slate-600 font-semibold">Click arrows to browse</span>
                                        </div>
-                                       <div className="bg-slate-950/30 border border-slate-900/60 p-2.5 rounded-lg overflow-x-auto max-h-[280px] custom-scrollbar text-emerald-400/90 leading-relaxed text-xs">
+                                       <div className="bg-slate-950/30 border border-slate-900/60 p-2.5 rounded-lg overflow-x-auto max-h-[650px] custom-scrollbar text-emerald-100/90 leading-relaxed text-xs">
                                          <LabJsonInteractiveNode val={json} isLast={true} />
                                        </div>
                                      </div>
@@ -2041,14 +2073,14 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                  } catch {
                                    // Beautiful fallback text container
                                    return (
-                                     <pre className="text-emerald-450/90 whitespace-pre-wrap overflow-x-hidden min-h-[80px] max-h-72 overflow-y-auto custom-scrollbar select-all text-xs font-mono">
+                                     <pre className="text-emerald-455/90 whitespace-pre-wrap overflow-x-hidden min-h-[140px] max-h-[650px] overflow-y-auto custom-scrollbar select-all text-xs font-mono">
                                        {selectedResult.body}
                                      </pre>
                                    );
                                  }
                                })() : (
-                                 <pre className="text-emerald-450/95 whitespace-pre-wrap overflow-x-hidden min-h-[80px] max-h-72 overflow-y-auto custom-scrollbar select-all leading-relaxed text-xs font-mono">
-                                   {selectedResult.body || 'Empty Payload.'}
+                                 <pre className="text-emerald-455/95 whitespace-pre-wrap overflow-x-hidden min-h-[140px] max-h-[650px] overflow-y-auto custom-scrollbar select-all leading-relaxed text-xs font-mono">
+                                   {selectedResult.body || 'Empty Response.'}
                                  </pre>
                                )}
                             </div>
