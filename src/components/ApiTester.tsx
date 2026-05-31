@@ -1964,7 +1964,6 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
                         <span className="font-bold text-emerald-500 flex items-center gap-2">
                           <FileJson size={12} /> Response
                         </span>
-                        <span className="text-[8px] font-bold text-slate-500">Click arrows to browse response object</span>
                       </div>
                       <div className="bg-slate-950/40 border border-slate-900 p-4 rounded-lg">
                         <JsonInteractiveNode val={json} isLast={true} />
@@ -2282,26 +2281,40 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
         </div>
         <div className="flex-1 overflow-y-auto p-4 px-6 custom-scrollbar space-y-1 bg-black">
           <AnimatePresence initial={false}>
-            {[...results].slice(-50).reverse().map((res, i) => (
-              <motion.div 
-                key={res.id}
-                initial={{ x: -10, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                onClick={() => setSelectedResult(res)}
-                className="group flex border-l-[2px] border-slate-800 hover:border-white py-1.5 pl-4 hover:bg-white/5 transition-all cursor-pointer items-center min-h-[32px]"
-              >
-                <span className="text-slate-600 w-16 shrink-0 font-mono text-[9px] font-black">-{res.responseTime}ms</span>
-                <span className={cn("w-14 font-black text-[10px]", res.status < 300 ? "text-emerald-500" : "text-rose-500")}>
-                  [{res.status}]
-                </span>
-                <span className="text-slate-500 flex-1 truncate uppercase tracking-tighter font-mono group-hover:text-white transition-colors text-[9px]">
-                  INSTANCE::{res.id.split('-').pop()} ➔ {res.status < 400 ? 'SUCCESS' : 'FAILURE'}
-                </span>
-                <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[8px] font-black text-white bg-slate-800 px-2 py-0.5 rounded tracking-widest">DRYLOAD</span>
-                </div>
-              </motion.div>
-            ))}
+            {[...results].slice(-50).reverse().map((res, i) => {
+              const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : results.length - i;
+              const rt = res.responseTime;
+              const tag = rt < 150 
+                ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
+                : rt < 450 
+                  ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
+                  : rt < 1000 
+                    ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-405 border border-amber-500/20' }
+                    : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-400 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
+              return (
+                <motion.div 
+                  key={res.id}
+                  initial={{ x: -10, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  onClick={() => setSelectedResult(res)}
+                  className="group flex border-l-[2px] border-slate-800 hover:border-white py-1.5 pl-4 hover:bg-white/5 transition-all cursor-pointer items-center min-h-[32px] gap-2"
+                >
+                  <span className="text-slate-500 text-[10px] font-bold w-10 shrink-0">#{currentIdx}</span>
+                  <span className="text-slate-350 w-16 shrink-0 font-mono text-[9px] font-black">➔ {rt}ms</span>
+                  <span className={cn("w-14 font-black text-[10px]", res.status < 300 ? "text-emerald-500" : "text-rose-500")}>
+                    [{res.status}]
+                  </span>
+                  <span className="text-slate-500 flex-1 truncate uppercase tracking-tighter font-mono group-hover:text-white transition-colors text-[9px]">
+                    REQ::{res.id.split('-').pop()}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={cn("text-[8px] font-black tracking-wider px-2 py-0.5 rounded uppercase font-mono border", tag.color)}>
+                      {tag.label}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
           {results.length === 0 && !progress && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 text-center space-y-4">

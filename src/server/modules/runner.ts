@@ -348,6 +348,7 @@ export class RequestRunner {
         };
 
         result = await executeWithRetry();
+        result.iterationIndex = index;
         if (testModule === 'distributed') {
           result.simulatedIp = simulatedIp;
           result.simulatedCountry = simulatedCountry;

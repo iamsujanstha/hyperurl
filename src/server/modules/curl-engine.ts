@@ -24,6 +24,7 @@ export interface CurlResult {
   simulatedCountry?: string;
   simulatedFlag?: string;
   simulatedRegion?: string;
+  iterationIndex?: number;
 }
 
 export class CurlEngine {

@@ -900,7 +900,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
         {/* PANEL 2: Middle Config & Execution Controls */}
         <div className="w-[420px] bg-[#0F1115] border-r border-[#1E293B] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
           <div className="p-4 bg-black/50 border-b border-[#1E293B] flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Properties & Controls</span>
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider"></span>
             <span className={cn("text-[8px] font-mono font-extrabold px-2 py-0.5 rounded border uppercase flex items-center gap-1", activeModule.bgColor, activeModule.color, activeModule.borderColor)}>
               {activeModule.strategy}
             </span>
@@ -1828,10 +1828,18 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                        )}
 
                        {[...results].reverse().map((res, i) => {
-                         const currentIdx = (progress?.completed ?? results.length) - i;
+                         const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : (progress?.completed ?? results.length) - i;
                          const isSelected = selectedResult?.id === res.id;
                          const fails = getFailedAssertionsCount(res);
                          const passedAll = fails === 0;
+                         const rt = res.responseTime;
+                         const tag = rt < 150 
+                           ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
+                           : rt < 450 
+                             ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
+                             : rt < 1000 
+                               ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }
+                               : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-455 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
                          return (
                            <div 
                              key={res.id} 
@@ -1845,7 +1853,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                    : "border-rose-950 hover:border-rose-500/70 hover:bg-rose-500/5 bg-rose-950/10"
                              )}
                            >
-                             <span className="text-slate-400 w-20 shrink-0 font-bold group-hover:text-amber-400 transition-colors">➔ {res.responseTime}ms</span>
+                             <span className="text-slate-400 w-20 shrink-0 font-bold group-hover:text-amber-400 transition-colors">➔ {rt}ms</span>
                              <span className={cn("w-14 font-black", res.status < 300 ? "text-emerald-400" : "text-rose-400")}>
                                [{res.status}]
                              </span>
@@ -1863,6 +1871,9 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                 )}
                              </span>
                              <div className="flex items-center shrink-0 ml-2 gap-1.5">
+                               <span className={cn("text-[8px] font-black tracking-wider px-2 py-0.5 rounded uppercase font-mono border", tag.color)}>
+                                 {tag.label}
+                               </span>
                                 {(res as any).retriesApplied !== undefined && (
                                   <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30 font-mono tracking-wider flex items-center gap-1">
                                     <Repeat size={10} className="animate-spin" /> {(res as any).retriesApplied}R
@@ -1940,36 +1951,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                              </div>
                           </div>
 
-                          <div className="space-y-2">
-                            <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block border-b border-slate-800 pb-1.5">Verification Asserts</span>
-                            <div className="bg-black/45 p-3 rounded-lg border border-slate-800 space-y-2">
-                              {assertions.map(a => {
-                                const ok = checkAssertion(selectedResult, a);
-                                return (
-                                  <div key={a.id} className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-400 font-bold">{a.type} ({a.value})</span>
-                                    {ok ? (
-                                      <span className="text-emerald-400 font-black flex items-center gap-1">✓ PASSED</span>
-                                    ) : (
-                                      <span className="text-rose-450 font-black flex items-center gap-1">✗ FAILED</span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block border-b border-slate-800 pb-1.5">Response Headers</span>
-                            <div className="bg-black p-3.5 rounded-lg border border-slate-800 space-y-2 h-40 overflow-y-auto text-xs text-slate-300 custom-scrollbar select-text">
-                              {Object.entries(selectedResult.headers).map(([k, v]) => (
-                                <div key={k} className="flex flex-col gap-0.5 border-b border-slate-900 pb-1.5">
-                                  <span className="text-blue-400 font-extrabold uppercase text-[10px]">{k}:</span>
-                                  <span className="text-slate-200 break-all pl-1 select-all">{v}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
 
                           <div className="space-y-2 flex-grow">
                             <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5 select-none">
@@ -2063,7 +2044,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                          <span className="font-bold text-emerald-500 flex items-center gap-1">
                                            <FileJson size={10} /> Response
                                          </span>
-                                         <span className="text-[8px] text-slate-600 font-semibold">Click arrows to browse</span>
+
                                        </div>
                                        <div className="bg-slate-950/30 border border-slate-900/60 p-2.5 rounded-lg overflow-x-auto max-h-[650px] custom-scrollbar text-emerald-100/90 leading-relaxed text-xs">
                                          <LabJsonInteractiveNode val={json} isLast={true} />
@@ -2083,6 +2064,18 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                    {selectedResult.body || 'Empty Response.'}
                                  </pre>
                                )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block border-b border-slate-800 pb-1.5">Response Headers</span>
+                            <div className="bg-black p-3.5 rounded-lg border border-slate-800 space-y-2 h-40 overflow-y-auto text-xs text-slate-300 custom-scrollbar select-text">
+                              {Object.entries(selectedResult.headers).map(([k, v]) => (
+                                <div key={k} className="flex flex-col gap-0.5 border-b border-slate-900 pb-1.5">
+                                  <span className="text-blue-400 font-extrabold uppercase text-[10px]">{k}:</span>
+                                  <span className="text-slate-200 break-all pl-1 select-all">{v}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
