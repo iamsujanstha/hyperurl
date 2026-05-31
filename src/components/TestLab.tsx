@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, Shield, Repeat, Target, Flame, AlertTriangle, Cpu, Activity, 
   Play, Info, Settings2, BarChart4, Terminal, X, RefreshCw, Layout, 
-  Beaker, ChevronDown, Copy, Code2, Globe, Server, Hash, Clock, Plus, Trash2, List, ShieldAlert, FileJson
+  Beaker, ChevronDown, ChevronUp, Sparkles, Copy, Code2, Globe, Server, Hash, Clock, Plus, Trash2, List, ShieldAlert, FileJson
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { RequestConfig, CurlResult } from '../server/modules/curl-engine';
 import { ProgressUpdate } from '../server/modules/runner';
 
-export type TestModuleId = 'blast' | 'race' | 'replay' | 'load' | 'chaos' | 'rate' | 'fuzzer' | 'scenario' | 'security_audit' | 'distributed';
+export type TestModuleId = 'basic_query' | 'blast' | 'race' | 'replay' | 'load' | 'chaos' | 'fuzzer' | 'security_audit' | 'distributed';
 
 interface TestModule {
   id: TestModuleId;
@@ -23,138 +23,135 @@ interface TestModule {
   settingsTitle: string;
   primaryMetric: string;
   theory: string;
+  category: 'perf' | 'resilience' | 'security';
 }
 
 const TEST_MODULES: TestModule[] = [
   {
+    id: 'basic_query',
+    name: 'SINGLE_REQUEST',
+    description: 'One-shot connection to inspect returns, header keys, response times, and validate JSON schemas.',
+    icon: <Target size={16} />,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/20',
+    borderColor: 'border-cyan-500/40',
+    strategy: 'SINGLE_PROBE',
+    settingsTitle: 'PROBE_SETUP',
+    primaryMetric: 'RESPONSE_TIME',
+    theory: 'Single-probe validation is the baseline of API contract checking. It runs a clean request to inspect response status codes, header details, and validate complex JSON payload structures.',
+    category: 'resilience'
+  },
+  {
     id: 'blast',
     name: 'CONCURRENT_BLAST',
-    description: 'High-density concurrent execution to verify endpoint saturation limit.',
+    description: 'Floods target endpoints with concurrent bursts to identify sudden thread pool and socket saturation thresholds.',
     icon: <Zap size={16} />,
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/20',
     borderColor: 'border-amber-500/40',
     strategy: 'PARALLEL_STORM',
-    settingsTitle: 'STRESS_LEVEL',
-    primaryMetric: 'THROUGHPUT',
-    theory: 'Saturation testing identifies peak capacity. Saturating the CPU and I/O request queues monitors the exact Point of Failure (PoF) where latency degrades exponentially.'
+    settingsTitle: 'CONCURRENCY_LEVEL',
+    primaryMetric: 'THROUGHPUT_RPS',
+    theory: 'Blast testing fires tight dense request waves simultaneously. This tracks concurrency-to-latency scaling graphs to pinpoint exactly where thread switching triggers CPU Thrashing.',
+    category: 'perf'
   },
   {
     id: 'race',
     name: 'RACE_DETECTOR',
-    description: 'Injects overlapping micro-delays to trigger state collisions.',
-    icon: <Shield size={16} />,
+    description: 'Sub-millisecond writes engine targeting specific records to verify atomic locking or isolate dirty writes.',
+    icon: <Activity size={16} />,
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/20',
     borderColor: 'border-emerald-500/40',
-    strategy: 'ATOMIC_INTEGRITY',
+    strategy: 'OVERLAPPING_COLLISION',
     settingsTitle: 'COLLISION_WINDOW',
-    primaryMetric: 'STATE_DRIFT',
-    theory: 'Race conditions happen when backend outcomes depend on request timing. Inundating a cluster simultaneously targets race scenarios in read-modify-write fields.'
+    primaryMetric: 'STATE_OVERLAPS',
+    theory: 'Race detectors verify concurrency blocks. Bombarding an edit endpoint at the identical millisecond reveals whether row-level isolation safeguards database consistency.',
+    category: 'perf'
   },
   {
     id: 'replay',
     name: 'REPLAY_GUARD',
-    description: 'Replays payload and telemetry signatures to verify idempotency guards.',
+    description: 'Iterates transactions with locked authorization tokens to verify double-capture safeguards and idempotency.',
     icon: <Repeat size={16} />,
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/20',
     borderColor: 'border-blue-500/40',
-    strategy: 'IDEMPOTENCY_PROBE',
-    settingsTitle: 'DEDUPLICATOR',
-    primaryMetric: 'DEDUPE_RATIO',
-    theory: 'Deduplication guarantees that processing multiple identical payloads has the same system impact as a single transaction—essential for payment streams.'
+    strategy: 'DEDUPLICATION_MATCH',
+    settingsTitle: 'TRANS_LOCKS',
+    primaryMetric: 'DEDUPLIC_PCT',
+    theory: 'Replay audits verify request deduplication. By submitting identical signature pairs sequentially, we audit whether duplicate charges fail or get gracefully logged with Cached headers.',
+    category: 'resilience'
   },
   {
     id: 'load',
     name: 'LOAD_CANNON',
-    description: 'Sustained throughput testing with worker queue orchestration.',
-    icon: <Target size={16} />,
-    color: 'text-orange-400',
-    bgColor: 'bg-orange-500/20',
-    borderColor: 'border-orange-500/40',
+    description: 'Extended continuous queue loops designed to stress garbage collection heaps, memory usage, and performance rot.',
+    icon: <Server size={16} />,
+    color: 'text-fuchsia-400',
+    bgColor: 'bg-fuchsia-500/20',
+    borderColor: 'border-fuchsia-500/40',
     strategy: 'SUSTAINED_PRESSURE',
-    settingsTitle: 'QUEUE_DEPTH',
-    primaryMetric: 'LATENCY_P99',
-    theory: 'Sustained profiles monitor reliability against performance contracts (SLA logs). It analyzes latency over time under nominal target expectations.'
+    settingsTitle: 'THROUGHPUT_CAP',
+    primaryMetric: 'HEAP_GROWTH_MB',
+    theory: 'Continuous load uncovers performance rot. Extended request streams are optimal for exposing client connection leaks, open file descriptor leaks, or slow unindexed query degradations.',
+    category: 'perf'
   },
   {
     id: 'chaos',
     name: 'CHAOS_MODE',
-    description: 'Simulates connection drops, packet limits, & structural network decay.',
+    description: 'Randomly drops request headers and introduces network jitters to verify circuit breaker graceful fallbacks.',
     icon: <Flame size={16} />,
-    color: 'text-rose-400',
-    bgColor: 'bg-rose-500/20',
-    borderColor: 'border-rose-500/40',
-    strategy: 'ENTROPY_ENGINE',
-    settingsTitle: 'ENTROPY_RATIO',
-    primaryMetric: 'ERROR_RATE',
-    theory: 'Entropy engineering validates fallback resiliency. Simulating physical outages forces your API endpoints to handle structural exceptions elegantly.'
-  },
-  {
-    id: 'rate',
-    name: 'RATE_BREAKER',
-    description: 'Frequency staging scans to map API endpoint throttling limitations.',
-    icon: <AlertTriangle size={16} />,
-    color: 'text-violet-400',
-    bgColor: 'bg-violet-500/20',
-    borderColor: 'border-violet-500/40',
-    strategy: 'LIMITS_DISCOVERY',
-    settingsTitle: 'BURST_PEAK',
-    primaryMetric: 'LIMIT_HIT_TIME',
-    theory: 'Rate limits protect computational cycles. This suite triggers consecutive micro-bursts of API packets until status 429 Too Many Requests triggers.'
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/20',
+    borderColor: 'border-orange-500/40',
+    strategy: 'ENTROPY_INJECTION',
+    settingsTitle: 'JITTER_AMPLITUDE',
+    primaryMetric: 'FALLBACK_RATIO',
+    theory: 'Chaos engines test upstream fault tolerance patterns. Discharging sudden packet delays or dropping headers validates whether circuit breakers safely degrade or trigger full-system crash cascades.',
+    category: 'resilience'
   },
   {
     id: 'fuzzer',
     name: 'PAYLOAD_FUZZER',
-    description: 'Mutates variable inputs & fields to detect type vulnerabilities.',
+    description: 'Mutates variable structures, strips schema fields, and cascades large string buffers to test parser bounds.',
     icon: <Cpu size={16} />,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/20',
-    borderColor: 'border-cyan-500/40',
-    strategy: 'MUTATION_STRESS',
-    settingsTitle: 'MUTATION_DEPTH',
-    primaryMetric: 'VULN_DISCOVERY',
-    theory: 'Fuzzing supplies arbitrary structures to the parsing logic. This exposes bad exception handlers, unquoted fields, or implicit casting crashes.'
-  },
-  {
-    id: 'scenario',
-    name: 'SCENARIO_RUNNER',
-    description: 'Sequential request pipelines with dynamic schema dependencies.',
-    icon: <Activity size={16} />,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-500/20',
-    borderColor: 'border-indigo-500/40',
-    strategy: 'PIPELINE_FLOW',
-    settingsTitle: 'PIPELINE_STAGES',
-    primaryMetric: 'CHAIN_SUCCESS',
-    theory: 'Active clients don\'t run endpoints in isolation. Scenario testing orchestrates stateful changes to confirm transactional integrity across paths.'
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/20',
+    borderColor: 'border-purple-500/40',
+    strategy: 'SCHEMA_MUTATION',
+    settingsTitle: 'MUTATION_FREQ',
+    primaryMetric: 'PARSING_ERRORS',
+    theory: 'Fuzzing audits verify payload validation boundaries. Injecting null cast variables, removing required keys, and expanding giant binary shapes ensures express body parsers fail with clean HTTP 400 errors instead of VM crash loops.',
+    category: 'security'
   },
   {
     id: 'security_audit',
     name: 'SECURITY_AUDITOR',
-    description: 'Probes for SQLi, XSS, local file disclosure, and audits HTTP response headers and CORS hygiene.',
-    icon: <ShieldAlert size={16} />,
+    description: 'Automated vulnerability sweep probing parameters against SQLi, tag XSS, and local traversal vectors.',
+    icon: <Shield size={16} />,
     color: 'text-rose-400',
     bgColor: 'bg-rose-500/20',
     borderColor: 'border-rose-500/40',
     strategy: 'VULNERABILITY_PROBE',
-    settingsTitle: 'PROBE_DEPTH',
+    settingsTitle: 'EXPLOIT_DEPTH',
     primaryMetric: 'VULN_ALERTS',
-    theory: 'Automated vulnerability checkers scan for unescaped field projections. Mutating inputs with active exploits (SQLi, XSS, Directory Traversal) highlights vulnerable status codes and content reflections.'
+    theory: 'Vulnerability scanners evaluate input parameters against standard injection strings. This flags reflected script execution boundaries or system file exposures, while auditing CORS and sanitizations.',
+    category: 'security'
   },
   {
     id: 'distributed',
     name: 'DISTRIBUTED_LOAD',
-    description: 'Simulates load originating from geographically distributed international IPs & client user-agents.',
+    description: 'Simulates multi-continent client routes by spoofing CDN origin headers, IP arrays, and regional ISP latencies.',
     icon: <Globe size={16} />,
-    color: 'text-violet-400',
-    bgColor: 'bg-violet-550/20',
-    borderColor: 'border-violet-500/40',
-    strategy: 'GEO_DISTRIBUTION',
-    settingsTitle: 'GEO_POPULATION',
-    primaryMetric: 'REGIONAL_JITTER',
-    theory: 'Distributed testing spoofing CDN origin IPs and injects routing Latency profiles per geolocation to audit system stability against global loads.'
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/20',
+    borderColor: 'border-indigo-500/40',
+    strategy: 'WORLDWIDE_SIMULATION',
+    settingsTitle: 'SIMULATED_NODES',
+    primaryMetric: 'GEO_RTT_MS',
+    theory: 'Geographically distributed audits verify CDN integration rules. Spoofing real IP locations and tracking regional speed trends ensures security firewall and IP limits perform cleanly near global origin endpoints.',
+    category: 'perf'
   }
 ];
 
@@ -164,6 +161,12 @@ const THEORETICAL_FRAMEWORKS: Record<TestModuleId, {
   realLifeExample: string;
   staffEngineeringDepth: string;
 }> = {
+  basic_query: {
+    problem: "Manual curl tests or single checks can easily miss subtle contract violations, malformed header entries, or unexpected payload changes. Out of sync model keys often go unnoticed, causing massive frontend or client parsing failures dynamically.",
+    solution: "Single Request contract probe inspects everything in one shot. It validates HTTP statuses, parses complete JSON structures, maps header-to-value expectations, and isolates API path specifications.",
+    realLifeExample: "A frontend code expects 'items' is returned as an array. The backend updates a serializer changing the key to 'listings'. Lacking automated contract testing, the client application immediately throws exceptions and crashes.",
+    staffEngineeringDepth: "Integrate contract testing using path schemas and standard JSON schema matches. Validating runtime types against static rules decouples API rollouts and ensures clients never crash due to unexpected parsing modifications."
+  },
   blast: {
     problem: "When user traffic spikes suddenly (e.g., ticket sales or viral media surges), thousands of concurrent TCP sockets connect simultaneously. If the database connection pool is under-provisioned, or if blockages creep into the event loop, thread starvation sets in. The system spends more CPU cycles switching execution contexts than completing productive work (CPU Thrashing), escalating latencies exponentially until the service timeouts or crashes (504 Gateway Timeouts).",
     solution: "CONCURRENT_BLAST testing floods the target with high-density parallel requests to identify thread pool bounds and database connection limits. By tracking API throughput (RPS) against scaling concurrency levels, we pinpoint the exact 'saturation inflection point' where throughput plateaus or drops while latencies rise sharply.",
@@ -194,23 +197,11 @@ const THEORETICAL_FRAMEWORKS: Record<TestModuleId, {
     realLifeExample: "A shop's main product page tries to load item details, stock count, and personal recommendations. The recommendation service suffers a network timeout. Since the main route calls the service synchronously without key protection, the entire product page hangs and errors out with a 500 error instead of simply hiding recommendations.",
     staffEngineeringDepth: "Wrap third-party and non-essential queries in resilient Circuit Breakers (such as Cockatiel or Hystrix), configure aggressive 500-1000ms socket timeouts, and return static fallbacks or cached models when downstream services fail."
   },
-  rate: {
-    problem: "Unrestricted public APIs are highly vulnerable to scraping, brute-force hacking, credit card testing, and general Denial of Service (DoS) sweeps. If endpoints don't restrict repetitive queries, they consume high database resources, elevate operating costs, and block legitimate traffic.",
-    solution: "RATE_BREAKER initiates fast, iterative bursts of identical target requests to detect rate limits, monitoring if HTTP 429 (Too Many Requests) boundaries trigger and verifying back-off response headers (e.g., Retry-After).",
-    realLifeExample: "An authentication route /api/login lacks rate limits. An attacker runs a dictionary attack, executing 100 requests per second using distinct password lists, overwhelming CPU-heavy bcrypt hashing blocks and locking up the server database.",
-    staffEngineeringDepth: "Deploy sliding-window or token-bucket rate limit algorithms on edge gateways (e.g., Cloudflare, Nginx, API Gateway) rather than application code. Leverage Redis to aggregate key-hits mapped to user IDs or Client IPs with short sliding windows (e.g., 60 seconds)."
-  },
   fuzzer: {
     problem: "API modules parse untrusted payloads assuming structures are correct. Lacking strict schema isolation, unescaped field entries, type casting errors, or unexpected keys can trigger backend interpreter crashes, unhandled database queries, or server crashes.",
     solution: "PAYLOAD_FUZZER alters payload variables, deletes keys, swaps types, and introduces giant buffers, proving that parser systems reject invalid input formats cleanly without leaking deep runtime traces or crashing the event loop.",
     realLifeExample: "A search endpoint parses a filters query: {\"price\": 100}. An attacker injects MongoDB operators: {\"price\": {\"$gt\": 0}}. The database runs the query literally, exposing the entire product database rather than raising an invalid query exception.",
     staffEngineeringDepth: "Integrate schema validation engines (such as Zod, AJV, or Joi) at the controller gateway. Adhere to a 'Parse, Don't Validate' design philosophy: strictly convert incoming payloads into sanitized, strongly typed model objects before forwarding data to internal service modules."
-  },
-  scenario: {
-    problem: "An individual endpoint can pass validation perfectly, yet state transitions across multiple endpoints (e.g., Register -> Order -> Refund) create edge cases like orphaned payments, inconsistent inventory allocations, or invalid transition logic.",
-    solution: "SCENARIO_RUNNER executes stateful chains of API operations to test end-to-end user journeys, ensuring state changes propagate cleanly across sequential microservices and audit logs.",
-    realLifeExample: "A flight checkout process charges a customer's card, reserves a seat, and sends a booking code. If reservation is broken, the money is captured, but the seat remains unallocated and the system leaves the order state 'broken' without issuing a rollback.",
-    staffEngineeringDepth: "Implement Saga Orchestration or Process Managers for distributed sagas. Leverage transactional outbox patterns to make sure actions commit together, and store state changes as persistent event records to facilitate point-in-time failure recovery."
   },
   security_audit: {
     problem: "Applications with inputs directly bound to query strings, SQL statements, or HTML renders are prone to injection vectors: SQLi, XSS, Path Traversal, or missing Sandbox headers. Attackers exploit these gaps to steal databases, read root files, or hijack active browser sessions.",
@@ -368,18 +359,18 @@ interface TestLabProps {
   loading: boolean;
   progress: ProgressUpdate | null;
   results: CurlResult[];
-  onStart: (moduleId: TestModuleId, settings: any) => void;
+  onStart: (moduleId: string, settings: any) => void;
   onAbort: () => void;
   onChangeConfig?: (updates: Partial<RequestConfig>) => void;
   onClearLogs?: () => void;
 }
 
 export function TestLab({ config, headersList, ws, activeTabId, loading, progress, results, onStart, onAbort, onChangeConfig, onClearLogs }: TestLabProps) {
-  const [selectedModule, setSelectedModule] = useState<TestModuleId>('blast');
+  const [selectedModule, setSelectedModule] = useState<TestModuleId>('basic_query');
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
   const [payloadTab, setPayloadTab] = useState<'pretty' | 'raw'>('pretty');
-  const [iterationsPerUser, setIterationsPerUser] = useState(10);
-  const [concurrency, setConcurrency] = useState(10);
+  const [iterationsPerUser, setIterationsPerUser] = useState(5);
+  const [concurrency, setConcurrency] = useState(5);
   const [retries, setRetries] = useState(0);
   const [labTab, setLabTab] = useState<'logs' | 'curl' | 'theory'>('logs');
   const [showLabCurl, setShowLabCurl] = useState(false);
@@ -391,6 +382,13 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [chaosAmplitude, setChaosAmplitude] = useState(60);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
   const [selectedRegions, setSelectedRegions] = useState<string[]>(['us', 'eu', 'apac', 'latam']);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'perf' | 'resilience' | 'security'>('all');
+  const [showPresets, setShowPresets] = useState(false);
+
+  const filteredModules = useMemo(() => {
+    if (selectedCategory === 'all') return TEST_MODULES;
+    return TEST_MODULES.filter(m => m.category === selectedCategory);
+  }, [selectedCategory]);
 
   const activeModule = useMemo(() => {
     return TEST_MODULES.find(m => m.id === selectedModule) || TEST_MODULES[0];
@@ -406,60 +404,23 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
     const baseCurl = `curl -X ${config.method} "${config.url || 'http://localhost:3000/api/endpoint'}" ${headers} ${body}`;
 
     switch (selectedModule) {
+      case 'basic_query':
+        return baseCurl;
       case 'blast':
+      case 'load':
         return `seq ${totalIterations} | xargs -P ${concurrency} -I {} ${baseCurl}`;
       case 'race':
-        return `# Overlapping Collision Script\nfor i in {1..${concurrency}}; do\n  ${baseCurl} &\ndone\nwait`;
+        return `# Race Condition Collision Test\n# Launches sub-millisecond thread waves\nseq ${totalIterations} | xargs -P ${concurrency} -I {} ${baseCurl}`;
+      case 'replay':
+        return `# Replay Guard & Idempotency Audit\n# Submits duplicate transaction parameters sequentially\n${baseCurl}`;
+      case 'chaos':
+        return `# Chaos Entropy Injection\n# Randomly mutates HTTP streams & corrupts headers\n${baseCurl}`;
       case 'fuzzer':
-        return `# Mutation Fuzzer Input Script\nfor i in {1..20}; do\n  # Injected field mutation logic\n  ${baseCurl}\ndone`;
+        return `# Payload Mutation Schema Fuzzer\n# Dynamic type mutator and buffer limits checks\n${baseCurl}`;
+      case 'security_audit':
+        return `# Security Auditor Vulnerability Prober\n# Scans parameters for SQL Injection & Cross-Site Scripting\n${baseCurl}`;
       case 'distributed':
-        return `# Geographically Distributed Load Simulation Script
-# Spoofs CDN origin headers & client user-agents across selected nodes
-
-# Selected Regions: ${selectedRegions.join(', ').toUpperCase()}
-
-simulate_region_request() {
-  local REGION=$1
-  local IP=""
-  local UA=""
-  
-  case $REGION in
-    "us")
-      IP="54.210.23.$((RANDOM % 254 + 1))"
-      UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      ;;
-    "eu")
-      IP="185.190.140.$((RANDOM % 254 + 1))"
-      UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-      ;;
-    "apac")
-      IP="103.55.12.$((RANDOM % 254 + 1))"
-      UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      ;;
-    "latam")
-      IP="201.24.150.$((RANDOM % 254 + 1))"
-      UA="Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
-      ;;
-  esac
-
-  curl -s -L -X ${config.method} "${config.url || 'http://localhost:3000/api/endpoint'}" \\
-    -A "$UA" \\
-    -H "X-Forwarded-For: $IP" \\
-    -H "X-Real-IP: $IP" \\
-    -H "CF-Connecting-IP: $IP" \\
-    -H "True-Client-IP: $IP" \\
-    -H "Client-IP: $IP" \\
-    ${Object.entries(headersConfig).map(([k, v]) => `-H "${k}: ${v}"`).join(' \\\n    ')} \\
-    ${config.body ? `-d '${config.body}'` : ''}
-}
-
-# Run distributed iterations in parallel
-for i in {1..${iterationsPerUser}}; do
-  for REGION in ${selectedRegions.join(' ')}; do
-    simulate_region_request "$REGION" &
-  done
-done
-wait`;
+        return `# Geographically Distributed Global CDN Simulation\n# Spoofs geo-located IP headers & tests global CDN routing rules\n${baseCurl}`;
       default:
         return baseCurl;
     }
@@ -634,9 +595,21 @@ wait`;
   };
 
   const startTest = () => {
-    onStart(selectedModule, {
-      iterations: totalIterations,
-      concurrency,
+    let backendModuleId: string = selectedModule;
+    let finalIterations = totalIterations;
+    let finalConcurrency = concurrency;
+
+    if (selectedModule === 'basic_query') {
+      backendModuleId = 'blast';
+      finalIterations = 1;
+      finalConcurrency = 1;
+    } else if (selectedModule === 'load') {
+      backendModuleId = 'blast';
+    }
+
+    onStart(backendModuleId, {
+      iterations: finalIterations,
+      concurrency: finalConcurrency,
       retries,
       assertions: assertions.map(a => ({ type: a.type, value: a.value })),
       fuzzerChecks,
@@ -858,7 +831,7 @@ wait`;
       {/* HUD Header */}
       <div className="p-4 border-b border-[#1E293B] bg-[#0F1115] shrink-0 flex flex-col md:flex-row md:items-center justify-start gap-4">
         {/* Dynamic Interactive Endpoint Changer - Direct Access */}
-        <div className="flex-1 max-w-2xl bg-black/50 border border-slate-800 rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex-1 w-full bg-black/50 border border-slate-800 rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-900 border border-slate-755 rounded-lg px-2.5 shrink-0 h-10">
             <span className="text-xs font-mono text-slate-400 uppercase font-black tracking-wider select-none whitespace-nowrap">METHOD:</span>
             <select
@@ -892,360 +865,150 @@ wait`;
 
       {/* Main Multi-Pane Workspace Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* PANEL 1: Left Roster Navigation */}
-        <div className="w-[300px] bg-[#0A0C10] border-r border-slate-800 flex flex-col overflow-y-auto no-scrollbar shrink-0">
-          <div className="p-4 bg-black/50 border-b border-slate-800">
-            <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider">Select attack profile</span>
-          </div>
-          <div className="p-3 space-y-2">
-            {TEST_MODULES.map((module) => {
-              const isActive = selectedModule === module.id;
-              return (
-                <button
-                  key={module.id}
-                  onClick={() => {
-                    setSelectedModule(module.id);
-                    setSelectedResult(null); 
-                  }}
-                  className={cn(
-                    "w-full text-left p-4 rounded-lg border transition-all flex items-start gap-3.5 group relative overflow-hidden select-none cursor-pointer",
-                    isActive 
-                      ? "bg-emerald-500/10 border-emerald-500/40 text-white shadow-md shadow-emerald-950/15" 
-                      : "bg-transparent border-transparent text-slate-300 hover:bg-slate-900/60 hover:text-white"
-                  )}
-                >
-                  <div className={cn(
-                    "p-2 rounded border shrink-0 transition-all",
-                    isActive 
-                      ? "bg-emerald-500/20 border-emerald-500/50 " + module.color
-                      : "bg-black/50 border-slate-850 " + module.color
-                  )}>
-                    {module.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold font-mono tracking-wide truncate">{module.name}</span>
-                      {isActive && <div className="w-2 h-4 bg-emerald-500 rounded-sm"></div>}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed font-sans">
-                      {module.description}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* PANEL 2: Middle Config & Execution Controls */}
-        <div className="w-[380px] bg-[#0F1115] border-r border-slate-800 flex flex-col overflow-y-auto custom-scrollbar shrink-0">
-          <div className="p-4 bg-black/50 border-b border-slate-800 flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider">Properties & Controls</span>
-            <span className={cn("text-[9px] font-mono font-extrabold px-2 py-0.5 rounded border uppercase flex items-center gap-1", activeModule.bgColor, activeModule.color, activeModule.borderColor)}>
+        <div className="w-[420px] bg-[#0F1115] border-r border-[#1E293B] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
+          <div className="p-4 bg-black/50 border-b border-[#1E293B] flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Properties & Controls</span>
+            <span className={cn("text-[8px] font-mono font-extrabold px-2 py-0.5 rounded border uppercase flex items-center gap-1", activeModule.bgColor, activeModule.color, activeModule.borderColor)}>
               {activeModule.strategy}
             </span>
           </div>
 
           <div className="p-5 space-y-6 flex-grow">
             
-            {/* QA Test Preset Templates Section */}
-            <div className="space-y-3 bg-slate-900/40 p-4 border border-slate-800 rounded-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">Automated QA Presets</span>
-                <span className="text-[9px] text-slate-500 font-mono font-bold uppercase">Ready Templates</span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
-                Click a test suite preset to auto-initialize headers, bodies, parameters, and assertions for verification.
-              </p>
-              <div className="grid grid-cols-1 gap-2 pt-1">
+            {/* Unified Sleek Test Strategy Selector (Replaced Left Sidebar) */}
+            <div className="space-y-3 bg-slate-900/30 p-4 border border-slate-800/80 rounded-xl">
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">TEST STRATEGY</span>
+              
+              {/* Category Filter Tabs */}
+              <div className="flex bg-black/60 p-1 border border-slate-800/50 rounded-lg gap-1">
                 {[
-                  {
-                    id: 'PRESET_IDEMPOTENCY',
-                    name: 'Idempotency Validation',
-                    desc: 'Checks POST / DELETE attempts with idempotency variables and keys.',
-                    icon: <Repeat size={12} className="text-blue-400" />,
-                    setup: () => {
-                      if (onChangeConfig) {
-                        onChangeConfig({
-                          method: 'POST',
-                          body: config.body || JSON.stringify({ transaction_id: "IDEM_TX_" + Math.floor(Math.random() * 100000), amount: 150.00, user_id: 1024 }),
-                          headers: {
-                            ...config.headers,
-                            'Idempotency-Key': 'IDEM_' + Math.random().toString(36).substring(2, 10),
-                            'X-Request-ID': 'REQ_' + Math.random().toString(36).substring(2, 10)
-                          }
-                        });
-                      }
-                      setAssertions([
-                        { id: '1', type: 'STATUS_CODE', value: '250' }, // Accepts normal/created responses
-                        { id: '2', type: 'IDEMPOTENCY_MATCH', value: 'true' }
-                      ]);
-                      setSelectedPresetId('PRESET_IDEMPOTENCY');
-                      setSelectedModule('replay');
-                    }
-                  },
-                  {
-                    id: 'PRESET_SCHEMA',
-                    name: 'Schema & Field Integrity',
-                    desc: 'Validates required model fields, type compliance, and data consistency.',
-                    icon: <Cpu size={12} className="text-cyan-400" />,
-                    setup: () => {
-                      setAssertions([
-                        { id: '1', type: 'STATUS_CODE', value: '200' },
-                        { id: '2', type: 'SCHEMA_KEY', value: 'id' }
-                      ]);
-                      setSelectedPresetId('PRESET_SCHEMA');
-                      setSelectedModule('fuzzer');
-                    }
-                  },
-                  {
-                    id: 'PRESET_PAGINATION',
-                    name: 'Pagination Boundaries',
-                    desc: 'Checks offset/limit boundaries, sorting directions, and cursors.',
-                    icon: <List size={12} className="text-amber-400" />,
-                    setup: () => {
-                      try {
-                        const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
-                        urlObj.searchParams.set('page', '1');
-                        urlObj.searchParams.set('limit', '10');
-                        urlObj.searchParams.set('sort', 'desc');
-                        if (onChangeConfig) {
-                          onChangeConfig({ url: urlObj.toString() });
-                        }
-                      } catch (e) {
-                        try {
-                          if (onChangeConfig) {
-                            onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'page=1&limit=10&sort=desc' });
-                          }
-                        } catch {}
-                      }
-                      setAssertions([
-                        { id: '1', type: 'STATUS_CODE', value: '200' },
-                        { id: '2', type: 'SCHEMA_KEY', value: 'limit' }
-                      ]);
-                      setSelectedPresetId('PRESET_PAGINATION');
-                      setSelectedModule('scenario');
-                    }
-                  },
-                  {
-                    id: 'PRESET_PERFORMANCE',
-                    name: 'SLA Performance Test',
-                    desc: 'Evaluates peak latencies to keep transactions strictly under 500ms.',
-                    icon: <Zap size={12} className="text-orange-400" />,
-                    setup: () => {
-                      setConcurrency(10);
-                      setIterationsPerUser(5);
-                      setAssertions([
-                        { id: '1', type: 'STATUS_CODE', value: '200' },
-                        { id: '2', type: 'LATENCY_LESS_THAN', value: '500' }
-                      ]);
-                      setSelectedPresetId('PRESET_PERFORMANCE');
-                      setSelectedModule('blast');
-                    }
-                  },
-                  {
-                    id: 'PRESET_SECURITY',
-                    name: 'Security Shield Audit',
-                    desc: 'Audits unescaped vectors, safe protocols, and missing CORS security headers.',
-                    icon: <ShieldAlert size={12} className="text-rose-400" />,
-                    setup: () => {
-                      setAssertions([
-                        { id: '1', type: 'HTTPS_ENFORCED', value: 'true' },
-                        { id: '2', type: 'HEADER_EXISTS', value: 'x-frame-options' }
-                      ]);
-                      setSelectedPresetId('PRESET_SECURITY');
-                      setSelectedModule('security_audit');
-                    }
-                  },
-                  {
-                    id: 'PRESET_VERSIONING',
-                    name: 'API Version Verification',
-                    desc: 'Tests API clients version selectors (Accept or custom HTTP headers).',
-                    icon: <Server size={12} className="text-violet-400" />,
-                    setup: () => {
-                      if (onChangeConfig) {
-                        onChangeConfig({
-                          headers: {
-                            ...config.headers,
-                            'Accept': 'application/vnd.myapi.v2+json',
-                            'X-API-Version': '2026-05-31'
-                          }
-                        });
-                      }
-                      setAssertions([
-                        { id: '1', type: 'STATUS_CODE', value: '200' },
-                        { id: '2', type: 'HEADER_EXISTS', value: 'x-api-version' }
-                      ]);
-                      setSelectedPresetId('PRESET_VERSIONING');
-                      setSelectedModule('scenario');
-                    }
-                  },
-                  {
-                    id: 'PRESET_ISOLATION',
-                    name: 'Transactional Isolation Check',
-                    desc: 'Validates that testing records use dynamic variables and safe boundaries.',
-                    icon: <Target size={12} className="text-emerald-400" />,
-                    setup: () => {
-                      const randVal = Math.floor(Math.random() * 999999);
-                      try {
-                        const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
-                        urlObj.searchParams.set('isolated_tx_id', 'TX_' + randVal);
-                        if (onChangeConfig) {
-                          onChangeConfig({ url: urlObj.toString() });
-                        }
-                      } catch (e) {
-                        if (onChangeConfig) {
-                          onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'isolated_tx_id=TX_' + randVal });
-                        }
-                      }
-                      setAssertions([
-                        { id: '1', type: 'STATUS_CODE', value: '200' },
-                        { id: '2', type: 'CONTAINS_TEXT', value: 'TX_' }
-                      ]);
-                      setSelectedPresetId('PRESET_ISOLATION');
-                      setSelectedModule('fuzzer');
-                    }
-                  }
-                ].map(p => {
-                  const isActive = selectedPresetId === p.id;
+                  { id: 'all', label: 'All' },
+                  { id: 'perf', label: 'Perf' },
+                  { id: 'resilience', label: 'Resil' },
+                  { id: 'security', label: 'Security' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(tab.id as any)}
+                    className={cn(
+                      "flex-1 px-1.5 py-1 text-[8px] font-extrabold tracking-wider uppercase rounded transition-all cursor-pointer select-none outline-none border",
+                      selectedCategory === tab.id
+                        ? "bg-slate-800 border-slate-700 text-emerald-400 font-black"
+                        : "bg-transparent border-transparent text-slate-400 hover:text-slate-205"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {filteredModules.map((module) => {
+                  const isActive = selectedModule === module.id;
                   return (
                     <button
-                      key={p.id}
-                      onClick={p.setup}
+                      key={module.id}
                       type="button"
+                      onClick={() => {
+                        setSelectedModule(module.id);
+                        setSelectedResult(null); 
+                      }}
                       className={cn(
-                        "w-full text-left p-2.5 rounded-lg border transition-all text-xs font-mono flex items-start gap-2.5 cursor-pointer select-none",
-                        isActive
-                          ? "bg-violet-950/40 border-violet-500/40 text-white shadow-lg"
-                          : "bg-black/30 border-slate-800/80 text-slate-350 hover:bg-slate-900/60 hover:border-slate-700 hover:text-white"
+                        "p-3 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer relative overflow-hidden select-none outline-none",
+                        isActive 
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-white" 
+                          : "bg-black/40 border-slate-850 text-slate-400 hover:bg-slate-900/35 hover:border-slate-800 hover:text-slate-200"
                       )}
                     >
-                      <div className="p-1.5 bg-black/60 rounded border border-slate-850 shrink-0">
-                        {p.icon}
+                      <div className={cn(
+                        "p-1.5 rounded-md border",
+                        isActive ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-[#090D14]/50 border-slate-850/80 text-slate-500"
+                      )}>
+                        {module.icon}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-extrabold text-slate-200 block text-[11px] leading-tight select-none">{p.name}</span>
-                        <span className="text-[10px] text-slate-450 leading-relaxed font-sans block mt-0.5 select-none">{p.desc}</span>
+                      <div className="text-center">
+                        <span className="text-[9px] font-black font-mono tracking-wider block uppercase">{module.name.replace('_', ' ')}</span>
                       </div>
                     </button>
                   );
                 })}
               </div>
+              <p className="text-[10px] text-slate-400 font-sans leading-relaxed pt-1 select-none">
+                {activeModule.description}
+              </p>
             </div>
 
-            {/* Thread controls */}
-            <div className="space-y-4">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block border-b border-slate-800 pb-1.5">Concurrency Engine</span>
-              <div className="grid grid-cols-2 gap-4">
+            {/* Thread controls & Error Mitigation */}
+            {selectedModule !== 'basic_query' && (
+              <>
+                <div className="space-y-4">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block border-b border-slate-800 pb-1.5">Concurrency Engine</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-mono text-slate-400 uppercase font-extrabold flex items-center gap-1.5">
+                        <Zap size={12} className="text-amber-400" /> Workers
+                      </label>
+                      <input 
+                        type="number" 
+                        value={concurrency}
+                        onChange={(e) => {
+                          setConcurrency(Math.max(1, parseInt(e.target.value) || 1));
+                          setSelectedPresetId('');
+                        }}
+                        disabled={loading}
+                        className="w-full bg-black border border-slate-705 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-mono text-slate-300 uppercase font-extrabold flex items-center gap-1.5">
+                        <Repeat size={12} className="text-blue-400" /> Iterations
+                      </label>
+                      <input 
+                        type="number" 
+                        value={iterationsPerUser}
+                        onChange={(e) => {
+                          setIterationsPerUser(Math.max(1, parseInt(e.target.value) || 1));
+                          setSelectedPresetId('');
+                        }}
+                        disabled={loading}
+                        className="w-full bg-black border border-slate-705 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-black/40 p-3 border border-slate-800 rounded-lg text-xs font-mono">
+                    <span className="text-slate-350 font-bold">Cumulative Load:</span>
+                    <span className="text-emerald-400 font-black text-sm">{totalIterations} requests total</span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-slate-400 uppercase font-extrabold flex items-center gap-1.5">
-                    <Zap size={12} className="text-amber-400" /> Workers
+                  <label className="text-[10px] font-mono text-slate-400 uppercase font-bold flex items-center gap-1.5">
+                    <Settings2 size={12} className="text-violet-400" /> Error tolerance
                   </label>
-                  <input 
-                    type="number" 
-                    value={concurrency}
+                  <select 
+                    value={retries}
                     onChange={(e) => {
-                      setConcurrency(Math.max(1, parseInt(e.target.value) || 1));
+                      setRetries(parseInt(e.target.value));
                       setSelectedPresetId('');
                     }}
                     disabled={loading}
-                    className="w-full bg-black border border-slate-705 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
-                  />
+                    className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 outline-none cursor-pointer appearance-none hover:border-slate-700"
+                  >
+                    <option value={0} className="bg-slate-900 text-white">NO RETRY (FAIL_FAST)</option>
+                    <option value={1} className="bg-slate-900 text-white">1X RETRY (RAPID_REATTEMPT)</option>
+                    <option value={2} className="bg-slate-900 text-white">2X RETRY (LINEAR_BACKOFF)</option>
+                  </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-mono text-slate-300 uppercase font-extrabold flex items-center gap-1.5">
-                    <Repeat size={12} className="text-blue-400" /> Iterations
-                  </label>
-                  <input 
-                    type="number" 
-                    value={iterationsPerUser}
-                    onChange={(e) => {
-                      setIterationsPerUser(Math.max(1, parseInt(e.target.value) || 1));
-                      setSelectedPresetId('');
-                    }}
-                    disabled={loading}
-                    className="w-full bg-black border border-slate-705 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between bg-black/40 p-3 border border-slate-800 rounded-lg text-xs font-mono">
-                <span className="text-slate-350 font-bold">Cumulative Load:</span>
-                <span className="text-emerald-400 font-black text-sm">{totalIterations} requests total</span>
-              </div>
-            </div>
-
-            {/* Error Mitigation */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-mono text-slate-400 uppercase font-bold flex items-center gap-1.5">
-                <Settings2 size={12} className="text-violet-400" /> Error tolerance
-              </label>
-              <select 
-                value={retries}
-                onChange={(e) => {
-                  setRetries(parseInt(e.target.value));
-                  setSelectedPresetId('');
-                }}
-                disabled={loading}
-                className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 outline-none cursor-pointer appearance-none hover:border-slate-700"
-              >
-                <option value={0} className="bg-slate-900 text-white">NO RETRY (FAIL_FAST)</option>
-                <option value={1} className="bg-slate-900 text-white">1X RETRY (RAPID_REATTEMPT)</option>
-                <option value={2} className="bg-slate-900 text-white">2X RETRY (LINEAR_BACKOFF)</option>
-              </select>
-            </div>
+              </>
+            )}
 
             {/* Custom inputs based on module */}
-            {selectedModule === 'fuzzer' && (
-              <div className="p-4 bg-cyan-950/30 rounded-lg border border-cyan-500/30 space-y-3">
-                <div className="text-xs font-black text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-                  <Cpu size={14} /> Mutation engine parameters
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { key: 'keyDeletions', label: 'STRIP JSON PAIRS' },
-                    { key: 'typeMutations', label: 'TYPE MUTATION PROBE' },
-                    { key: 'bufferOverflow', label: 'INJECT STR BUFFER EXPAND' }
-                  ].map(item => (
-                    <label key={item.key} className="flex items-center gap-3.5 text-xs font-mono text-slate-300 hover:text-white cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={(fuzzerChecks as any)[item.key]} 
-                        onChange={(e) => setFuzzerChecks({ ...fuzzerChecks, [item.key]: e.target.checked })}
-                        className="w-4 h-4 accent-cyan-500 bg-black border-slate-700 rounded transition-all" 
-                      />
-                      {item.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedModule === 'chaos' && (
-              <div className="p-4 bg-rose-950/30 rounded-lg border border-rose-500/30 space-y-4">
-                <div className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                  <Flame size={14} /> Chaos engine entropy amplitude
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-mono text-slate-300">
-                    <span>CONNECTION LOSS JITTER</span>
-                    <span className="text-rose-400 font-extrabold">{chaosAmplitude}ms</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="50" 
-                    max="1500" 
-                    value={chaosAmplitude}
-                    onChange={(e) => setChaosAmplitude(parseInt(e.target.value))}
-                    className="w-full accent-rose-500 cursor-pointer bg-black rounded-lg h-1.5"
-                  />
-                </div>
-              </div>
-            )}
-
             {selectedModule === 'security_audit' && (
-              <div className="p-4 bg-rose-950/30 rounded-lg border border-rose-550/30 space-y-3">
+              <div className="p-4 bg-rose-950/20 rounded-lg border border-rose-500/30 space-y-3">
                 <div className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                  <ShieldAlert size={14} /> Security auditor parameters
+                  <ShieldAlert size={14} /> Security shield configuration
                 </div>
                 <div className="space-y-2">
                   {[
@@ -1268,48 +1031,305 @@ wait`;
               </div>
             )}
 
-            {selectedModule === 'distributed' && (
-              <div className="p-4 bg-violet-950/30 rounded-lg border border-violet-500/30 space-y-4">
-                <div className="text-xs font-black text-violet-400 tracking-widest flex items-center gap-2">
-                  <Globe size={14} /> Regional Simulation Nodes
+            {selectedModule === 'fuzzer' && (
+              <div className="p-4 bg-purple-950/20 rounded-lg border border-purple-500/30 space-y-3">
+                <div className="text-xs font-black text-purple-400 uppercase tracking-widest flex items-center gap-2 font-mono">
+                  <Cpu size={14} /> Mutation fuzzer engine
                 </div>
-                <p className="text-[11px] text-slate-455 font-sans leading-relaxed">
-                  Toggle geographical locations to simulate incoming client headers & network latency hops.
-                </p>
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {[
-                    { id: 'us', label: 'North America (US)', details: '10-50ms latency' },
-                    { id: 'eu', label: 'Europe (EU)', details: '70-150ms latency' },
-                    { id: 'apac', label: 'Asia-Pacific (APAC)', details: '150-270ms latency' },
-                    { id: 'latam', label: 'Latin America (LATAM)', details: '120-220ms latency' }
+                    { key: 'keyDeletions', label: 'MUTATE BY DELETING INTEGRAL KEYPAIRS' },
+                    { key: 'typeMutations', label: 'CROSS-MUTATE TYPES (STRING VS NUMBER)' },
+                    { key: 'bufferOverflow', label: 'FLOOD BY BUFFER OVERFLOWS (1000x STRING)' }
+                  ].map(item => (
+                    <label key={item.key} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={(fuzzerChecks as any)[item.key]} 
+                        onChange={(e) => setFuzzerChecks({ ...fuzzerChecks, [item.key]: e.target.checked })}
+                        className="w-4 h-4 accent-purple-500 bg-black border-slate-700 rounded transition-all" 
+                      />
+                      {item.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedModule === 'chaos' && (
+              <div className="p-4 bg-orange-950/20 rounded-lg border border-orange-500/30 space-y-3">
+                <div className="text-xs font-black text-orange-400 uppercase tracking-widest flex items-center gap-2 font-mono">
+                  <Flame size={14} /> Entropy Chaos Injection
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-slate-400 font-extrabold">MAX JITTER WAVE DELAY</span>
+                    <span className="text-orange-400 font-black">{chaosAmplitude}ms</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min={50} 
+                    max={1500} 
+                    step={50}
+                    value={chaosAmplitude}
+                    onChange={(e) => setChaosAmplitude(parseInt(e.target.value))}
+                    disabled={loading}
+                    className="w-full accent-orange-550 cursor-pointer h-1.5 bg-black rounded"
+                  />
+                  <div className="text-[10px] text-slate-450 leading-relaxed font-sans">
+                    Entropy adds packet delays and forces structural failures to stress resilience layers.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedModule === 'distributed' && (
+              <div className="p-4 bg-indigo-950/20 rounded-lg border border-indigo-500/30 space-y-3">
+                <div className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 font-mono">
+                  <Globe size={14} /> Global Simulation Nodes
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { id: 'us', label: '🇺🇸 NORTH AMERICA (US-EAST / US-WEST)' },
+                    { id: 'eu', label: '🇩🇪 EUROPE (FRANKFURT / LONDON / PARIS)' },
+                    { id: 'apac', label: '🇯🇵 ASIA PACIFIC (TOKYO / SINGAPORE / SYDNEY)' },
+                    { id: 'latam', label: '🇧🇷 LATIN AMERICA (SÃO PAULO / MEXICO / BOGOTÁ)' }
                   ].map(region => {
-                    const active = selectedRegions.includes(region.id);
+                    const isChecked = selectedRegions.includes(region.id);
                     return (
-                      <label key={region.id} className="flex items-center justify-between text-xs font-mono text-slate-300 hover:text-white cursor-pointer select-none border-b border-white/5 pb-1.5 last:border-b-0">
-                        <span className="flex items-center gap-2.5">
-                          <input 
-                            type="checkbox" 
-                            checked={active} 
-                            onChange={() => {
-                              if (active) {
-                                if (selectedRegions.length > 1) {
-                                  setSelectedRegions(selectedRegions.filter(r => r !== region.id));
-                                }
-                              } else {
-                                setSelectedRegions([...selectedRegions, region.id]);
+                      <label key={region.id} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked} 
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedRegions([...selectedRegions, region.id]);
+                            } else {
+                              if (selectedRegions.length > 1) {
+                                setSelectedRegions(selectedRegions.filter(r => r !== region.id));
                               }
-                            }}
-                            className="w-4 h-4 accent-violet-500 bg-black border-slate-705 rounded transition-all cursor-pointer" 
-                          />
-                          {region.label}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-bold">{region.details}</span>
+                            }
+                          }}
+                          className="w-4 h-4 accent-indigo-500 bg-black border-slate-700 rounded transition-all" 
+                        />
+                        {region.label}
                       </label>
                     );
                   })}
                 </div>
               </div>
             )}
+
+            {/* QA Test Preset Templates Section (Premium Collapsible) */}
+            <div className="space-y-3 bg-slate-900/45 p-4 border border-slate-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setShowPresets(!showPresets)}
+                className="flex items-center justify-between w-full hover:text-white transition-colors cursor-pointer select-none outline-none"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-violet-400" />
+                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">Automated QA Presets</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-slate-500 font-mono font-bold uppercase">{showPresets ? 'COLLAPSE' : 'EXPAND'}</span>
+                  {showPresets ? <ChevronUp size={12} className="text-slate-500" /> : <ChevronDown size={12} className="text-slate-500" />}
+                </div>
+              </button>
+              <AnimatePresence>
+                {showPresets && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden space-y-3 pt-1"
+                  >
+                    <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
+                      Click a test suite preset to auto-initialize headers, bodies, parameters, and assertions for verification.
+                    </p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        {
+                          id: 'PRESET_IDEMPOTENCY',
+                          name: 'Idempotency Validation',
+                          desc: 'Checks POST / DELETE attempts with idempotency variables and keys.',
+                          icon: <Repeat size={12} className="text-blue-400" />,
+                          setup: () => {
+                            if (onChangeConfig) {
+                              onChangeConfig({
+                                method: 'POST',
+                                body: config.body || JSON.stringify({ transaction_id: "IDEM_TX_" + Math.floor(Math.random() * 100000), amount: 150.00, user_id: 1024 }),
+                                headers: {
+                                  ...config.headers,
+                                  'Idempotency-Key': 'IDEM_' + Math.random().toString(36).substring(2, 10),
+                                  'X-Request-ID': 'REQ_' + Math.random().toString(36).substring(2, 10)
+                                }
+                              });
+                            }
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '250' }, // Accepts normal/created responses
+                              { id: '2', type: 'IDEMPOTENCY_MATCH', value: 'true' }
+                            ]);
+                            setSelectedPresetId('PRESET_IDEMPOTENCY');
+                            setSelectedModule('replay');
+                          }
+                        },
+                        {
+                          id: 'PRESET_SCHEMA',
+                          name: 'Schema & Field Integrity',
+                          desc: 'Validates required model fields, type compliance, and data consistency.',
+                          icon: <Cpu size={12} className="text-cyan-400" />,
+                          setup: () => {
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '200' },
+                              { id: '2', type: 'SCHEMA_KEY', value: 'id' }
+                            ]);
+                            setSelectedPresetId('PRESET_SCHEMA');
+                            setSelectedModule('fuzzer');
+                          }
+                        },
+                        {
+                          id: 'PRESET_PAGINATION',
+                          name: 'Pagination Boundaries',
+                          desc: 'Checks offset/limit boundaries, sorting directions, and cursors.',
+                          icon: <List size={12} className="text-amber-400" />,
+                          setup: () => {
+                            try {
+                              const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
+                              urlObj.searchParams.set('page', '1');
+                              urlObj.searchParams.set('limit', '10');
+                              urlObj.searchParams.set('sort', 'desc');
+                              if (onChangeConfig) {
+                                onChangeConfig({ url: urlObj.toString() });
+                              }
+                            } catch (e) {
+                              try {
+                                if (onChangeConfig) {
+                                  onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'page=1&limit=10&sort=desc' });
+                                }
+                              } catch {}
+                            }
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '200' },
+                              { id: '2', type: 'SCHEMA_KEY', value: 'limit' }
+                            ]);
+                            setSelectedPresetId('PRESET_PAGINATION');
+                            setSelectedModule('basic_query');
+                          }
+                        },
+                        {
+                          id: 'PRESET_PERFORMANCE',
+                          name: 'SLA Performance Test',
+                          desc: 'Evaluates peak latencies to keep transactions strictly under 500ms.',
+                          icon: <Zap size={12} className="text-orange-400" />,
+                          setup: () => {
+                            setConcurrency(10);
+                            setIterationsPerUser(5);
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '200' },
+                              { id: '2', type: 'LATENCY_LESS_THAN', value: '500' }
+                            ]);
+                            setSelectedPresetId('PRESET_PERFORMANCE');
+                            setSelectedModule('blast');
+                          }
+                        },
+                        {
+                          id: 'PRESET_SECURITY',
+                          name: 'Security Shield Audit',
+                          desc: 'Audits unescaped vectors, safe protocols, and missing CORS security headers.',
+                          icon: <ShieldAlert size={12} className="text-rose-400" />,
+                          setup: () => {
+                            setAssertions([
+                              { id: '1', type: 'HTTPS_ENFORCED', value: 'true' },
+                              { id: '2', type: 'HEADER_EXISTS', value: 'x-frame-options' }
+                            ]);
+                            setSelectedPresetId('PRESET_SECURITY');
+                            setSelectedModule('security_audit');
+                          }
+                        },
+                        {
+                          id: 'PRESET_VERSIONING',
+                          name: 'API Version Verification',
+                          desc: 'Tests API clients version selectors (Accept or custom HTTP headers).',
+                          icon: <Server size={12} className="text-violet-400" />,
+                          setup: () => {
+                            if (onChangeConfig) {
+                              onChangeConfig({
+                                headers: {
+                                  ...config.headers,
+                                  'Accept': 'application/vnd.myapi.v2+json',
+                                  'X-API-Version': '2026-05-31'
+                                }
+                              });
+                            }
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '200' },
+                              { id: '2', type: 'HEADER_EXISTS', value: 'x-api-version' }
+                            ]);
+                            setSelectedPresetId('PRESET_VERSIONING');
+                            setSelectedModule('basic_query');
+                          }
+                        },
+                        {
+                          id: 'PRESET_ISOLATION',
+                          name: 'Transactional Isolation Check',
+                          desc: 'Validates that testing records use dynamic variables and safe boundaries.',
+                          icon: <Target size={12} className="text-emerald-400" />,
+                          setup: () => {
+                            const randVal = Math.floor(Math.random() * 999999);
+                            try {
+                              const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
+                              urlObj.searchParams.set('isolated_tx_id', 'TX_' + randVal);
+                              if (onChangeConfig) {
+                                onChangeConfig({ url: urlObj.toString() });
+                              }
+                            } catch (e) {
+                              if (onChangeConfig) {
+                                onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'isolated_tx_id=TX_' + randVal });
+                              }
+                            }
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '200' },
+                              { id: '2', type: 'CONTAINS_TEXT', value: 'TX_' }
+                            ]);
+                            setSelectedPresetId('PRESET_ISOLATION');
+                            setSelectedModule('fuzzer');
+                          }
+                        }
+                      ].map(p => {
+                        const isActive = selectedPresetId === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              p.setup();
+                              // Auto collapse presets section upon selection to keep things super tidy
+                              setShowPresets(false);
+                            }}
+                            type="button"
+                            className={cn(
+                              "w-full text-left p-2.5 rounded-lg border transition-all text-xs font-mono flex items-start gap-2.5 cursor-pointer select-none",
+                              isActive
+                                ? "bg-violet-950/40 border-violet-500/40 text-white shadow-lg"
+                                : "bg-black/30 border-slate-800/80 text-slate-350 hover:bg-slate-900/60 hover:border-slate-700 hover:text-white"
+                            )}
+                          >
+                            <div className="p-1.5 bg-black/60 rounded border border-slate-850 shrink-0">
+                              {p.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-extrabold text-slate-200 block text-[11px] leading-tight select-none">{p.name}</span>
+                              <span className="text-[10px] text-slate-455 leading-relaxed font-sans block mt-0.5 select-none">{p.desc}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Assertions Roster */}
             <div className="space-y-3 pt-4 border-t border-slate-800">

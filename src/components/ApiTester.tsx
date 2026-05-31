@@ -57,57 +57,67 @@ function HistoryList() {
   }, []);
 
   return (
-    <div className="flex-1 card-slate overflow-hidden flex flex-col bg-black border border-slate-850 rounded">
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar min-h-[350px]">
+    <div className="flex-1 card-slate overflow-hidden flex flex-col bg-[#0F1115] border border-slate-800/80 rounded-xl">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar min-h-[350px]">
         {history.length === 0 && (
-          <div className="text-center p-12 text-slate-600 font-mono text-xs italic">
+          <div className="text-center p-16 text-slate-500 font-mono text-sm italic">
             NO_PREVIOUS_REPORTS_FOUND_IN_CACHE
           </div>
         )}
         {history.map((item, idx) => (
-          <div key={idx} className="p-3 bg-slate-900/40 border border-slate-850 rounded group hover:border-emerald-500/30 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                  item.batch ? 'border-amber-500/30 text-amber-500 bg-amber-500/5' : 'border-emerald-500/30 text-emerald-500 bg-emerald-500/5'
+          <div key={idx} className="p-4 bg-black/45 hover:bg-black/60 border border-slate-800/60 rounded-xl group hover:border-[#10B981]/50 transition-all shadow-md animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 border-b border-slate-850 pb-2.5">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className={`text-xs font-black px-2 py-0.75 rounded-md border tracking-wider select-none ${
+                  item.batch ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' : 'border-emerald-555/40 text-emerald-400 bg-emerald-500/10'
                 }`}>
-                  {item.batch ? 'CONCURRENCY_SET' : item.request.method}
+                  {item.batch ? 'BATCH' : item.request.method}
                 </span>
-                <span className="text-[11px] font-mono text-slate-300 truncate max-w-[400px]">
+                <span className="text-xs sm:text-sm font-semibold font-mono text-slate-105 truncate max-w-[550px] tracking-wide">
                   {item.request.url}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-600">
-                {new Date(item.timestamp).toLocaleTimeString([], { hour12: false })}
+              <span className="text-xs font-mono text-slate-450 tracking-wide select-none">
+                {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
             
             {item.batch ? (
-              <div className="grid grid-cols-4 gap-2 mt-2 p-2 bg-black/40 rounded border border-slate-800/40">
-                <div className="text-center">
-                   <div className="text-[9px] text-slate-500 uppercase font-mono">REQ_CNT</div>
-                   <div className="text-[11px] font-bold font-mono text-white tracking-widest">{item.batch.iterations}</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-slate-900/30 rounded-lg border border-slate-800/50">
+                <div className="text-center border-r border-slate-850 md:border-r-1 last:border-0 p-1">
+                   <div className="text-[10px] font-black text-slate-400 uppercase font-mono tracking-wider mb-1">TOTAL_REQS</div>
+                   <div className="text-base font-black font-mono text-white tracking-widest">{item.batch.iterations}</div>
                 </div>
-                <div className="text-center">
-                   <div className="text-[9px] text-slate-500 uppercase font-mono">PARAL_WK</div>
-                   <div className="text-[11px] font-bold font-mono text-amber-500">{item.batch.concurrency}</div>
+                <div className="text-center border-r-0 md:border-r border-slate-850 last:border-0 p-1">
+                   <div className="text-[10px] font-black text-slate-400 uppercase font-mono tracking-wider mb-1">CONCURRENCY</div>
+                   <div className="text-base font-black font-mono text-amber-405">{item.batch.concurrency}</div>
                 </div>
-                <div className="text-center">
-                   <div className="text-[9px] text-slate-500 uppercase font-mono">OK_RESP</div>
-                   <div className="text-[11px] font-bold font-mono text-emerald-500">{item.batch.successCount}</div>
+                <div className="text-center border-r border-slate-850 last:border-0 p-1">
+                   <div className="text-[10px] font-black text-slate-400 uppercase font-mono tracking-wider mb-1">OK_RESP</div>
+                   <div className="text-base font-black font-mono text-emerald-450">{item.batch.successCount}</div>
                 </div>
-                <div className="text-center">
-                   <div className="text-[9px] text-slate-500 uppercase font-mono">AVG_LAT</div>
-                   <div className="text-[11px] font-bold font-mono text-blue-400">{item.batch.avgResponseTime?.toFixed(0)}ms</div>
+                <div className="text-center p-1">
+                   <div className="text-[10px] font-black text-slate-400 uppercase font-mono tracking-wider mb-1">AVG_LATENCY</div>
+                   <div className="text-base font-black font-mono text-blue-400">{item.batch.avgResponseTime?.toFixed(0)}ms</div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-4 text-[10px] font-mono text-slate-500 pl-1">
-                <span className={item.result.status < 300 ? 'text-emerald-500' : 'text-rose-500'}>
-                  STATUS__{item.result.status}
-                </span>
-                <span className="opacity-50">|</span>
-                <span>TIME__{item.result.responseTime}MS</span>
+              <div className="flex items-center gap-4 text-xs font-mono text-slate-350 pr-1 pl-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 uppercase font-black tracking-wider text-[10px]">RESPONSE:</span>
+                  <span className={`font-black px-1.5 py-0.5 rounded-md text-xs border ${
+                    item.result.status < 300 
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                      : 'bg-rose-500/10 border-rose-500/20 text-rose-450'
+                  }`}>
+                    {item.result.status}
+                  </span>
+                </div>
+                <span className="opacity-30">|</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 uppercase font-black tracking-wider text-[10px]">LATENCY:</span>
+                  <span className="text-blue-400 font-bold">{item.result.responseTime}ms</span>
+                </div>
               </div>
             )}
           </div>
@@ -620,7 +630,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
     });
   };
 
-  const handleStartLabTest = (moduleId: TestModuleId, settings: any) => {
+  const handleStartLabTest = (moduleId: string, settings: any) => {
     if (!ws) return;
     updateActiveTab({ loading: true, batchResults: [] });
     ws.send(JSON.stringify({
@@ -975,20 +985,20 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 <div className="w-full lg:w-1/2 border-r border-slate-800 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar">
                   <div className="p-4 border-b border-slate-800 flex flex-col gap-4 shrink-0">
                     {/* REST vs GraphQL High-Level Workspace Switcher */}
-                    <div className="flex bg-[#0A0C10] border border-slate-800/80 rounded p-0.5 w-full">
+                    <div className="flex bg-[#0A0C10] border border-slate-800/80 rounded p-1 w-full">
                       <button
                         onClick={() => {
                           updateActiveConfig({ method: 'GET' });
                         }}
                         type="button"
                         className={cn(
-                          "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-[10px] uppercase font-bold tracking-wider font-mono transition-all",
+                          "flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded text-xs uppercase font-black tracking-wider font-mono transition-all",
                           activeTab.config.method !== 'GRAPHQL'
-                            ? "bg-[#141822] text-emerald-400 border border-slate-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-400 border border-transparent"
+                            ? "bg-[#141822] text-emerald-450 border border-slate-700/60 shadow-sm"
+                            : "text-slate-500 hover:text-slate-350 border border-transparent"
                         )}
                       >
-                        <Terminal size={11} className={activeTab.config.method !== 'GRAPHQL' ? "text-emerald-400 animate-pulse" : "text-slate-500"} /> REST CLIENT
+                        <Terminal size={12} className={activeTab.config.method !== 'GRAPHQL' ? "text-emerald-450 animate-pulse" : "text-slate-505"} /> REST CLIENT
                       </button>
                       <button
                         onClick={() => {
@@ -999,21 +1009,21 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                         }}
                         type="button"
                         className={cn(
-                          "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-[10px] uppercase font-bold tracking-wider font-mono transition-all",
+                          "flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded text-xs uppercase font-black tracking-wider font-mono transition-all",
                           activeTab.config.method === 'GRAPHQL'
                             ? "bg-[#181528] text-violet-400 border border-violet-950/40 shadow-sm"
-                            : "text-slate-500 hover:text-slate-400 border border-transparent"
+                            : "text-slate-500 hover:text-slate-355 border border-transparent"
                         )}
                       >
-                        <Zap size={11} className={activeTab.config.method === 'GRAPHQL' ? "text-violet-400 animate-pulse" : "text-slate-500"} /> GraphQL Playground
+                        <Zap size={12} className={activeTab.config.method === 'GRAPHQL' ? "text-violet-400 animate-pulse" : "text-slate-505"} /> GraphQL Playground
                       </button>
                     </div>
                     
-                    <div className="flex gap-0 ring-1 ring-slate-800 rounded bg-[#0F1115] overflow-hidden focus-within:ring-emerald-500/50 transition-all">
+                    <div className="flex gap-0 ring-1 ring-slate-800 rounded-lg bg-[#0F1115] overflow-hidden focus-within:ring-emerald-500/50 transition-all">
                       <select
                         value={activeTab.config.method}
                         onChange={(e) => updateActiveConfig({ method: e.target.value as any })}
-                        className="bg-transparent text-amber-500 font-bold font-mono text-[11px] px-4 outline-none cursor-pointer border-r border-slate-800 h-10 appearance-none text-center"
+                        className="bg-transparent text-amber-500 font-black font-mono text-xs sm:text-sm px-4 outline-none cursor-pointer border-r border-slate-800 h-11 appearance-none text-center"
                       >
                         {METHODS.map(m => <option key={m} value={m} className="bg-slate-900 border-none">{m}</option>)}
                       </select>
@@ -1022,64 +1032,66 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                         value={activeTab.config.url}
                         onChange={(e) => updateActiveConfig({ url: e.target.value })}
                         placeholder="URL_ENDPOINT_INPUT"
-                        className="flex-1 bg-transparent px-4 text-[11px] font-mono text-emerald-400 placeholder:text-slate-700 outline-none h-10"
+                        className="flex-1 bg-transparent px-4 text-xs sm:text-sm font-mono text-emerald-400 placeholder:text-slate-750 outline-none h-11 font-semibold tracking-wide"
                       />
                       <button
                         onClick={activeTab.loading ? handleAbort : handleRun}
                         className={cn(
-                          "px-6 text-[10px] font-mono font-bold transition-all text-white active:scale-95 h-10 flex items-center justify-center gap-2 border-l border-slate-800",
+                          "px-7 text-xs font-mono font-black tracking-wider transition-all text-white active:scale-95 h-11 flex items-center justify-center gap-2 border-l border-slate-800",
                           activeTab.loading ? "bg-rose-600/85 hover:bg-rose-600" : "bg-emerald-600/85 hover:bg-emerald-600"
                         )}
                       >
-                        {activeTab.loading ? <RefreshCw size={12} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
+                        {activeTab.loading ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
                         {activeTab.loading ? 'ABORT' : 'EXEC'}
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between pt-1 pb-1">
+                      <div className="flex items-center gap-3">
                         <button 
                           onClick={saveToCollection}
-                          className="p-1 px-2 border border-slate-800 rounded text-[9px] font-mono text-slate-500 hover:text-white flex items-center gap-1.5 uppercase transition-colors"
+                          className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-xs font-bold font-mono text-slate-350 hover:text-white flex items-center gap-2 uppercase transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
-                          <Save size={10} /> SAVE
+                          <Save size={12} className="text-emerald-500" /> SAVE
                         </button>
-                        <div className="h-4 w-px bg-slate-800 mx-1"></div>
+                        <div className="h-5 w-px bg-slate-800 mx-1"></div>
                         {['Single', 'Batch'].map(mode => (
                           <button
                             key={mode}
                             onClick={() => updateActiveTab({ batchMode: mode === 'Batch' })}
                             className={cn(
-                              "px-2 py-0.5 rounded text-[9px] font-mono border transition-all uppercase",
+                              "px-3 py-1.5 rounded-lg text-xs font-black font-mono border transition-all uppercase tracking-wider cursor-pointer active:scale-95",
                               (mode === 'Batch' && activeTab.batchMode) || (mode === 'Single' && !activeTab.batchMode)
-                                ? "bg-white text-black border-white"
-                                : "bg-transparent border-slate-800 text-slate-500"
+                                ? "bg-white text-black border-white shadow-md"
+                                : "bg-transparent border-slate-800 hover:border-slate-700 text-slate-450 hover:text-slate-200"
                             )}
                           >
                             {mode}
                           </button>
                         ))}
                       </div>
-                      <button 
-                        onClick={() => updateActiveTab({ showCurl: !activeTab.showCurl })}
-                        className={cn(
-                          "text-[9px] font-mono flex items-center gap-1 uppercase tracking-widest transition-colors",
-                          activeTab.showCurl ? "text-emerald-400" : "text-slate-600 hover:text-slate-400"
-                        )}
-                      >
-                        <Terminal size={10} /> {activeTab.showCurl ? 'HIDE_CURL' : 'SHOW_CURL'}
-                      </button>
-                      <div className="h-4 w-px bg-slate-800 mx-1"></div>
-                      <button 
-                        onClick={() => {
-                          const resolved = getResolvedConfig(activeTab);
-                          const curl = `curl -X ${resolved.method} "${resolved.url}" ${Object.entries(resolved.headers).map(([k,v]) => `-H "${k}: ${v}"`).join(' ')} ${resolved.body ? `-d '${resolved.body}'` : ''}`;
-                          navigator.clipboard.writeText(curl);
-                        }}
-                        className="text-[9px] font-mono text-slate-600 hover:text-emerald-400 flex items-center gap-1 uppercase tracking-widest"
-                      >
-                        <Copy size={10} /> COPY_CURL
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => updateActiveTab({ showCurl: !activeTab.showCurl })}
+                          className={cn(
+                            "text-xs font-bold font-mono flex items-center gap-1.5 uppercase tracking-wider transition-colors cursor-pointer",
+                            activeTab.showCurl ? "text-emerald-400" : "text-slate-450 hover:text-slate-200"
+                          )}
+                        >
+                          <Terminal size={12} /> {activeTab.showCurl ? 'HIDE_CURL' : 'SHOW_CURL'}
+                        </button>
+                        <div className="h-4 w-px bg-slate-800"></div>
+                        <button 
+                          onClick={() => {
+                            const resolved = getResolvedConfig(activeTab);
+                            const curl = `curl -X ${resolved.method} "${resolved.url}" ${Object.entries(resolved.headers).map(([k,v]) => `-H "${k}: ${v}"`).join(' ')} ${resolved.body ? `-d '${resolved.body}'` : ''}`;
+                            navigator.clipboard.writeText(curl);
+                          }}
+                          className="text-xs font-bold font-mono text-slate-450 hover:text-emerald-450 flex items-center gap-1.5 uppercase tracking-wider cursor-pointer"
+                        >
+                          <Copy size={12} /> COPY_CURL
+                        </button>
+                      </div>
                     </div>
 
                     {activeTab.showCurl && (
@@ -1115,31 +1127,32 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                     )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-[#0B0D11]">
                      {/* Parameters and Body implementation */}
-                     <section className="mb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-2">
-                           <List size={10} /> Headers_Matrix
+                     <section className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
+                           <List size={12} className="text-emerald-500" /> Headers_Matrix
                         </label>
                         <button 
                           onClick={() => updateActiveTab({ headersList: [...activeTab.headersList, { id: uuidv4(), key: '', value: '' }] })}
-                          className="text-emerald-500"
+                          className="text-[#10B981] hover:text-emerald-400 transition-colors p-1 bg-slate-900 border border-slate-800 rounded-md shadow-sm active:scale-90 cursor-pointer"
+                          title="Add entry"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {activeTab.headersList.map((h) => (
-                          <div key={h.id} className="flex gap-1 group">
+                          <div key={h.id} className="flex gap-2 items-center group animate-fadeIn">
                             <input
                               value={h.key}
                               onChange={(e) => {
                                 const newList = activeTab.headersList.map(item => item.id === h.id ? { ...item, key: e.target.value } : item);
                                 updateActiveTab({ headersList: newList });
                               }}
-                              placeholder="Key"
-                              className="flex-1 bg-slate-900 border border-slate-800/80 rounded px-2 py-1.5 text-[11px] font-mono outline-none"
+                              placeholder="Header-Key"
+                              className="flex-1 bg-slate-905 border border-slate-800/80 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-emerald-500/40 text-slate-200"
                             />
                             <input
                               value={h.value}
@@ -1148,16 +1161,16 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                                 updateActiveTab({ headersList: newList });
                               }}
                               placeholder="Value"
-                              className="flex-1 bg-slate-900 border border-slate-800/80 rounded px-2 py-1.5 text-[11px] font-mono outline-none"
+                              className="flex-1 bg-slate-905 border border-slate-800/80 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-emerald-500/40 text-slate-200"
                             />
                             <button 
                               onClick={() => {
                                 const newList = activeTab.headersList.filter(item => item.id !== h.id);
                                 updateActiveTab({ headersList: newList });
                               }}
-                              className="text-slate-600 hover:text-rose-500 group-hover:opacity-100 transition-opacity"
+                              className="text-slate-500 hover:text-rose-500 p-2 hover:bg-slate-905 border border-transparent hover:border-slate-800 rounded-lg transition-all"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         ))}
@@ -1165,10 +1178,10 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                      </section>
 
                      {['POST', 'PUT', 'PATCH'].includes(activeTab.config.method) && (
-                      <section>
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-2">
-                             <FileJson size={10} /> Payload_JSON
+                      <section className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
+                             <FileJson size={12} className="text-emerald-500" /> Payload_JSON
                           </label>
                           <button 
                             onClick={() => {
@@ -1179,7 +1192,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                                  showCustomAlert('INVALID JSON', 'Malformed syntax detected. Ensure keys and values are properly quoted.');
                                }
                             }}
-                            className="text-[9px] font-mono text-slate-600 hover:text-emerald-500 uppercase transition-colors"
+                            className="text-xs font-bold font-mono text-slate-450 hover:text-emerald-450 uppercase transition-colors cursor-pointer"
                           >
                             Prettify_JSON
                           </button>
@@ -1187,28 +1200,28 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                         <textarea
                           value={activeTab.config.body}
                           onChange={(e) => updateActiveConfig({ body: e.target.value })}
-                          className="w-full bg-black border border-slate-850 rounded p-3 font-mono text-[11px] text-emerald-450/80 outline-none h-40 resize-none"
+                          className="w-full bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-emerald-400/90 outline-none h-48 resize-y focus:border-emerald-500/45 tracking-wide leading-relaxed shadow-inner"
                         />
                       </section>
                      )}
 
                      {activeTab.config.method === 'GRAPHQL' && (
-                      <section className="flex flex-col gap-4 min-h-[580px] lg:h-[calc(100vh-320px)]">
-                         <div className="flex-1 flex flex-col min-h-[220px]">
-                          <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2 flex items-center gap-2 shrink-0">
-                            <Layers size={10} className="text-violet-500" /> GraphQL_Query
+                      <section className="flex flex-col gap-5 min-h-[580px] lg:h-[calc(100vh-320px)] pt-2">
+                         <div className="flex-1 flex flex-col min-h-[220px] space-y-2">
+                          <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 shrink-0">
+                            <Layers size={12} className="text-violet-500 animate-pulse" /> GraphQL_Query
                           </label>
                           <textarea
                             value={activeTab.graphqlQuery || ''}
                             onChange={(e) => updateActiveTab({ graphqlQuery: e.target.value })}
                             placeholder="query MyQuery { ... }"
-                            className="w-full flex-1 bg-black border border-slate-800 rounded p-3 font-mono text-[11px] text-violet-400/80 outline-none resize-none shadow-inner animate-pulse-subtle"
+                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-violet-400/90 outline-none resize-none focus:border-violet-500/45 leading-relaxed shadow-inner"
                           />
                         </div>
-                        <div className="h-44 md:h-[220px] flex flex-col shrink-0">
-                          <div className="flex items-center justify-between mb-2 shrink-0">
-                            <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-2">
-                               <Database size={10} className="text-blue-500" /> Variables_JSON
+                        <div className="h-48 md:h-[240px] flex flex-col shrink-0 space-y-2">
+                          <div className="flex items-center justify-between shrink-0">
+                            <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
+                               <Database size={12} className="text-blue-500" /> Variables_JSON
                             </label>
                             <button 
                               onClick={() => {
@@ -1219,7 +1232,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                                    showCustomAlert('INVALID JSON', 'Malformed syntax in GraphQL variables detector. Ensure keys and values are properly quoted.');
                                  }
                               }}
-                              className="text-[9px] font-mono text-slate-600 hover:text-blue-400 uppercase transition-colors pointer-events-auto"
+                              className="text-xs font-bold font-mono text-slate-450 hover:text-blue-400 uppercase transition-colors cursor-pointer"
                             >
                               Format_Vars
                             </button>
@@ -1228,7 +1241,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                             value={activeTab.graphqlVariables || ''}
                             onChange={(e) => updateActiveTab({ graphqlVariables: e.target.value })}
                             placeholder='{ "id": 1 }'
-                            className="w-full flex-1 bg-black border border-slate-800 rounded p-3 font-mono text-[11px] text-blue-400/80 outline-none resize-none"
+                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-blue-400/95 outline-none resize-none focus:border-blue-500/45 leading-relaxed"
                           />
                         </div>
                       </section>
@@ -1307,11 +1320,11 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 className="absolute inset-0 overflow-y-auto p-8 custom-scrollbar bg-[#0B0D11]"
               >
                 <div className="max-w-4xl mx-auto flex flex-col h-full overflow-hidden">
-                  <div className="flex items-center justify-between mb-4 shrink-0">
-                     <h2 className="text-sm font-bold text-slate-300 font-mono tracking-widest flex items-center gap-2 uppercase">
-                        <History size={14} className="text-emerald-500" /> System_History_Logs
+                  <div className="flex items-center justify-between mb-5 shrink-0 pb-2 border-b border-slate-800/60">
+                     <h2 className="text-base font-black text-white font-mono tracking-widest flex items-center gap-2.5 uppercase text-slate-100">
+                        <History size={16} className="text-emerald-450 animate-pulse" /> System_History_Logs
                      </h2>
-                     <div className="text-[9px] text-slate-500 font-mono bg-slate-800 px-2 py-1 rounded">RETENTION: 100_ENTRIES</div>
+                     <div className="text-xs text-slate-400 font-mono bg-slate-800 border border-slate-700/80 px-3 py-1 rounded-lg font-bold">RETENTION: 100_ENTRIES</div>
                   </div>
                   <HistoryList />
                 </div>

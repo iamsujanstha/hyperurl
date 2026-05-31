@@ -52,62 +52,86 @@
 
 /* High-Contrast Light Mode Accessibility Theme overrides */
 .theme-light {
-  background-color: #FFFFFF !important;
+  background-color: #FAFAFA !important;
   color: #0F172A !important;
   color-scheme: light !important;
 }
 
-.theme-light, 
-.theme-light * {
-  border-color: #CBD5E1 !important;
+/* Force standard text elements inside light theme to have excellent dark contrast */
+.theme-light,
+.theme-light p,
+.theme-light span,
+.theme-light div,
+.theme-light label,
+.theme-light button,
+.theme-light h1,
+.theme-light h2,
+.theme-light h3,
+.theme-light h4 {
+  text-rendering: optimizeLegibility;
 }
 
-/* Layout Panels & Inner Containers */
+/* Specific background styling overrides: turn dark layouts to bright white or soft gray */
 .theme-light .bg-\[\#0B0D11\],
 .theme-light .bg-black,
-.theme-light .bg-\[\#07080A\] {
+.theme-light .bg-black\/35,
+.theme-light .bg-black\/40,
+.theme-light .bg-black\/45,
+.theme-light .bg-black\/50,
+.theme-light .bg-black\/60,
+.theme-light .bg-\[\#07080A\],
+.theme-light .bg-\[\#050608\]\/50 {
   background-color: #FAFAFA !important;
 }
 
 .theme-light .bg-\[\#0F1115\],
 .theme-light .bg-\[\#0A0C10\],
 .theme-light .bg-\[\#161B25\],
-.theme-light .bg-black\/50,
-.theme-light .bg-black\/60 {
+.theme-light .bg-\[\#0F1217\]\/50 {
   background-color: #F1F5F9 !important;
 }
 
 .theme-light .bg-\[\#12161E\],
 .theme-light .bg-\[\#10141C\],
 .theme-light .bg-\[\#141822\],
+.theme-light .bg-\[\#090D14\]\/20,
+.theme-light .bg-\[\#090D14\]\/40,
+.theme-light .bg-\[\#090D14\]\/50,
+.theme-light .bg-\[\#090D14\]\/95,
 .theme-light .bg-[#181528] {
   background-color: #FFFFFF !important;
 }
 
+/* Override dark slate sub-card backgrounds to soft gray/white */
 .theme-light .bg-slate-900,
+.theme-light .bg-slate-900\/30,
+.theme-light .bg-slate-900\/40,
 .theme-light .bg-slate-900\/60,
+.theme-light .bg-slate-900\/80,
+.theme-light .bg-slate-950\/30,
 .theme-light .bg-slate-950\/40,
-.theme-light .bg-\[\#090D14\]\/20,
-.theme-light .bg-\[\#090D14\]\/95 {
-  background-color: #E2E8F0 !important;
+.theme-light .bg-slate-950\/60 {
+  background-color: #F8FAFC !important;
 }
 
 .theme-light .bg-slate-900.border {
   background-color: #FFFFFF !important;
 }
 
-/* Active & hover states */
+/* Inactive button backgrounds in workspace toggles / presets list */
 .theme-light .bg-slate-800\/60,
 .theme-light .bg-slate-800\/50,
 .theme-light .bg-slate-800\/20 {
   background-color: #E2E8F0 !important;
 }
 
+/* Beautiful hover transitions inside light theme */
 .theme-light .hover\:bg-slate-800\/50:hover,
 .theme-light .hover\:bg-slate-800:hover,
 .theme-light .hover\:bg-slate-700:hover,
-.theme-light .hover\:bg-emerald-500\/5:hover {
-  background-color: #CBD5E1 !important;
+.theme-light .hover\:bg-emerald-500\/5:hover,
+.theme-light .hover\:bg-black\/60:hover {
+  background-color: #E2E8F0 !important;
 }
 
 /* Scrollbar adjustment */
@@ -118,69 +142,178 @@
   background-color: #94A3B8 !important;
 }
 
-/* Border styles force */
+/* Blanket neutral/gray border styles overrides to crisp slate-300 */
 .theme-light .border-slate-800,
 .theme-light .border-slate-850,
+.theme-light .border-slate-800\/80,
+.theme-light .border-slate-850\/60,
+.theme-light .border-slate-850\/80,
 .theme-light .border-slate-900,
-.theme-light .border-\[\#1E293B\],
-.theme-light .border-slate-705 {
+.theme-light .border-slate-900\/50,
+.theme-light .border-slate-705,
+.theme-light .border-slate-755,
+.theme-light .border-\[\#1E293B\] {
   border-color: #CBD5E1 !important;
 }
 
-/* Accessible typography coloring */
+/* Pre-eminent Semantic Borders: DO NOT strip red, green, or yellow indicators! Make them deep and high-contrast instead */
+.theme-light .border-rose-500\/20,
+.theme-light .border-rose-500\/15,
+.theme-light .border-rose-500\/25,
+.theme-light .border-rose-500\/30,
+.theme-light .border-rose-955,
+.theme-light .border-rose-950,
+.theme-light .border-rose-950\/20,
+.theme-light .border-rose-950\/35 {
+  border-color: #DC2626 !important; /* solid and prominent rose indicators */
+}
+
+.theme-light .border-emerald-500\/20,
+.theme-light .border-emerald-500\/30,
+.theme-light .border-emerald-500\/40,
+.theme-light .border-emerald-500\/15,
+.theme-light .border-emerald-955,
+.theme-light .border-emerald-950,
+.theme-light .border-emerald-950\/20,
+.theme-light .border-emerald-950\/35 {
+  border-color: #10B981 !important; /* solid emerald indicators */
+}
+
+.theme-light .border-amber-500\/20,
+.theme-light .border-amber-500\/30,
+.theme-light .border-amber-500\/40,
+.theme-light .border-amber-550\/20,
+.theme-light .border-amber-500\/15 {
+  border-color: #F59E0B !important; /* solid amber indicators */
+}
+
+/* Semantically colored backgrounds: make them lovely, extremely readable pastel warning states */
+.theme-light .bg-rose-950\/10,
+.theme-light .bg-rose-950\/15,
+.theme-light .bg-rose-950\/20 {
+  background-color: #FEF2F2 !important; /* soft, highly accessible red */
+}
+
+.theme-light .bg-amber-950\/10,
+.theme-light .bg-amber-950\/15,
+.theme-light .bg-amber-950\/20 {
+  background-color: #FFFBEB !important; /* soft, highly accessible amber */
+}
+
+.theme-light .bg-emerald-950\/10,
+.theme-light .bg-emerald-950\/15,
+.theme-light .bg-emerald-950\/20,
+.theme-light .bg-emerald-500\/15 {
+  background-color: #ECFDF5 !important; /* soft, highly accessible green */
+}
+
+/* Disable dark-mode gradients on big panels and replace with beautiful flat containers cards */
+.theme-light .bg-gradient-to-r.p-5,
+.theme-light .bg-gradient-to-r.p-4 {
+  background-image: none !important;
+  background-color: #FFFFFF !important;
+}
+
+/* High contrast active & interactive components text overriding */
+.theme-light .text-slate-50,
 .theme-light .text-slate-100,
+.theme-light .text-slate-105,
 .theme-light .text-slate-200,
+.theme-light .text-slate-205,
 .theme-light .text-slate-300,
+.theme-light .text-slate-350,
+.theme-light .text-slate-355,
 .theme-light .text-white {
-  color: #0F172A !important;
+  color: #0F172A !important; /* Dark Slate-900 */
 }
 
 .theme-light .text-slate-400,
 .theme-light .text-slate-405,
 .theme-light .text-slate-450,
 .theme-light .text-slate-500,
+.theme-light .text-slate-550,
 .theme-light .text-slate-600 {
-  color: #475569 !important;
+  color: #334155 !important; /* Crisp Slate-700 / Slate-600 for great readback */
 }
 
-/* Color codes */
+/* Fix active slate-800 dark elements so they are readable, turning to high contrast light elements */
+.theme-light .bg-slate-800 {
+  background-color: #E2E8F0 !important;
+}
+.theme-light .bg-slate-800,
+.theme-light .bg-slate-800 * {
+  color: #0F172A !important;
+}
+
+/* Solid status colors mapping for compliant accessibility standard contrast */
 .theme-light .text-emerald-400,
 .theme-light .text-emerald-405,
-.theme-light .text-emerald-500 {
-  color: #0D9488 !important;
+.theme-light .text-emerald-450,
+.theme-light .text-emerald-500,
+.theme-light .text-emerald-400\/90,
+.theme-light .text-emerald-455,
+.theme-light .text-emerald-500\/90 {
+  color: #047857 !important; /* Accessible Emerald-700 */
 }
 
 .theme-light .text-blue-400,
-.theme-light .text-blue-500 {
-  color: #1D4ED8 !important;
+.theme-light .text-blue-500,
+.theme-light .text-blue-400\/80,
+.theme-light .text-blue-405,
+.theme-light .text-blue-450,
+.theme-light .text-blue-400\/95 {
+  color: #1D4ED8 !important; /* Accessible Blue-700 */
 }
 
 .theme-light .text-violet-400,
-.theme-light .text-violet-500 {
-  color: #6D28D9 !important;
+.theme-light .text-violet-500,
+.theme-light .text-violet-400\/80,
+.theme-light .text-violet-400\/90 {
+  color: #6D28D9 !important; /* Accessible Violet-700 */
 }
 
 .theme-light .text-amber-400,
+.theme-light .text-amber-505,
+.theme-light .text-amber-405,
 .theme-light .text-amber-500 {
-  color: #B45309 !important;
+  color: #B45309 !important; /* Accessible Amber-700 */
 }
 
 .theme-light .text-rose-400,
+.theme-light .text-rose-450,
+.theme-light .text-rose-455,
 .theme-light .text-rose-500 {
-  color: #DC2626 !important;
+  color: #B91C1C !important; /* Accessible Rose-700 */
 }
 
-/* Badges background replacements */
-.theme-light .bg-emerald-500\/10 { background-color: rgba(13, 148, 136, 0.12) !important; }
-.theme-light .bg-blue-500\/10 { background-color: rgba(29, 79, 216, 0.12) !important; }
-.theme-light .bg-violet-500\/10 { background-color: rgba(109, 40, 217, 0.12) !important; }
-.theme-light .bg-amber-500\/10 { background-color: rgba(180, 83, 9, 0.12) !important; }
-.theme-light .bg-rose-500\/10, .theme-light .bg-rose-600\/25 { background-color: rgba(220, 38, 38, 0.12) !important; }
+/* Semantic Badges transparent fills overrides */
+.theme-light .bg-emerald-500\/10,
+.theme-light .bg-emerald-500\/15 {
+  background-color: rgba(4, 120, 87, 0.1) !important;
+}
+.theme-light .bg-blue-500\/10,
+.theme-light .bg-blue-500\/15 {
+  background-color: rgba(29, 78, 216, 0.1) !important;
+}
+.theme-light .bg-violet-500\/10,
+.theme-light .bg-violet-500\/15 {
+  background-color: rgba(109, 40, 217, 0.1) !important;
+}
+.theme-light .bg-amber-500\/10,
+.theme-light .bg-amber-500\/15 {
+  background-color: rgba(180, 83, 9, 0.1) !important;
+}
+.theme-light .bg-rose-500\/10,
+.theme-light .bg-rose-500\/15,
+.theme-light .bg-rose-600\/25 {
+  background-color: rgba(185, 28, 28, 0.1) !important;
+}
 
-/* Control inputs styling */
+/* Control inputs and native interactive tags styling overrides */
 .theme-light input,
 .theme-light select,
-.theme-light textarea {
+.theme-light textarea,
+.theme-light option {
   background-color: #FFFFFF !important;
   color: #0F172A !important;
   border: 1px solid #CBD5E1 !important;
@@ -191,6 +324,38 @@
   background-color: #FFFFFF !important;
   color: #0F172A !important;
   border-color: #CBD5E1 !important;
+}
+
+/* Ensure green action buttons / focus elements preserve crisp white labels and beautiful solid states */
+.theme-light .button-primary,
+.theme-light .bg-emerald-600,
+.theme-light .bg-emerald-500 {
+  background-color: #059669 !important;
+  border-color: #047857 !important;
+}
+.theme-light .button-primary *,
+.theme-light .bg-emerald-600 *,
+.theme-light .bg-emerald-500 * {
+  color: #FFFFFF !important;
+}
+
+.theme-light .button-primary:hover,
+.theme-light .bg-emerald-600:hover,
+.theme-light .bg-emerald-500:hover {
+  background-color: #047857 !important;
+}
+
+/* Secondary Button clean styling overrides */
+.theme-light .button-secondary {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #1E293B !important;
+}
+.theme-light .button-secondary * {
+  color: #1E293B !important;
+}
+.theme-light .button-secondary:hover {
+  background-color: #F8FAFC !important;
 }
 
 
