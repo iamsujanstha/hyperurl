@@ -633,7 +633,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         concurrency: settings.concurrency,
         retries: settings.retries,
         jitter: moduleId === 'chaos',
-        fuzzing: moduleId === 'fuzzer'
+        fuzzing: moduleId === 'fuzzer',
+        regions: settings.regions
       }
     }));
   };

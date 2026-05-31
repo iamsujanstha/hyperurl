@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Zap, Shield, Repeat, Target, Flame, AlertTriangle, Cpu, Activity, 
   Play, Info, Settings2, BarChart4, Terminal, X, RefreshCw, Layout, 
-  Beaker, ChevronDown, Copy, Code2, Globe, Server, Hash, Clock, Plus, Trash2, List, ShieldAlert
+  Beaker, ChevronDown, Copy, Code2, Globe, Server, Hash, Clock, Plus, Trash2, List, ShieldAlert, FileJson
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { RequestConfig, CurlResult } from '../server/modules/curl-engine';
 import { ProgressUpdate } from '../server/modules/runner';
 
-export type TestModuleId = 'blast' | 'race' | 'replay' | 'load' | 'chaos' | 'rate' | 'fuzzer' | 'scenario' | 'security_audit';
+export type TestModuleId = 'blast' | 'race' | 'replay' | 'load' | 'chaos' | 'rate' | 'fuzzer' | 'scenario' | 'security_audit' | 'distributed';
 
 interface TestModule {
   id: TestModuleId;
@@ -142,6 +142,19 @@ const TEST_MODULES: TestModule[] = [
     settingsTitle: 'PROBE_DEPTH',
     primaryMetric: 'VULN_ALERTS',
     theory: 'Automated vulnerability checkers scan for unescaped field projections. Mutating inputs with active exploits (SQLi, XSS, Directory Traversal) highlights vulnerable status codes and content reflections.'
+  },
+  {
+    id: 'distributed',
+    name: 'DISTRIBUTED_LOAD',
+    description: 'Simulates load originating from geographically distributed international IPs & client user-agents.',
+    icon: <Globe size={16} />,
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-550/20',
+    borderColor: 'border-violet-500/40',
+    strategy: 'GEO_DISTRIBUTION',
+    settingsTitle: 'GEO_POPULATION',
+    primaryMetric: 'REGIONAL_JITTER',
+    theory: 'Distributed testing spoofing CDN origin IPs and injects routing Latency profiles per geolocation to audit system stability against global loads.'
   }
 ];
 
@@ -204,10 +217,148 @@ const THEORETICAL_FRAMEWORKS: Record<TestModuleId, {
     solution: "SECURITY_AUDITOR tests fields by injecting malicious patterns (e.g., ' OR 1=1 --, <script>, and traversals) to inspect if error paths reflect raw backends, checking if response headers correctly sanitize client-side contexts.",
     realLifeExample: "An endpoint loads files via /api/view?file=item.pdf. An attacker accesses /api/view?file=../../../../etc/passwd, bypassing authorization to read the host operating system's user credentials directly.",
     staffEngineeringDepth: "Maintain defence-in-depth: decouple user parameters using Prepared / Parameterized Queries, purify HTML output using DOMPurify, lock file lookups to strict static folders, and configure strict security headers (CSP, HSTS, XSS-Protection, X-Frame-Options)."
+  },
+  distributed: {
+    problem: "Standard single-origin load tests hit endpoints from a single client subnet or physical machine, missing downstream DNS caching, multi-continent Cloudflare routing filters, third-party ISP throttling, or incorrect client IP parsing issues on API load-balancers.",
+    solution: "DISTRIBUTED_LOAD spoofs standard industry CDN headers (X-Forwarded-For, X-Real-IP, Client-IP) and dynamically inserts typical geographical speed parameters, validating how the core network buffers realistic worldwide loads.",
+    realLifeExample: "A global service uses regional rate-limiting or location-based firewalls. A simple QA run completes fine locally, but sudden customer load bursts in Sydney block Japanese endpoints entirely due to missing routing filters.",
+    staffEngineeringDepth: "Implement CDN boundary authentication and strict upstream proxy verification. Configure secure 'trust proxy' patterns inside framework controllers to bypass artificial IP header tampering while safely identifying origin IPs for client diagnostics."
   }
 };
 
+function LabJsonInteractiveNode({ label, val, isLast = true }: { label?: string; val: any; isLast?: boolean; key?: any }) {
+  const [collapsed, setCollapsed] = useState(true);
 
+  if (val === null) {
+    return (
+      <div className="pl-4 py-0.5 select-none font-mono text-[11px]">
+        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+        {label && <span className="text-slate-500 mr-1">:</span>}
+        <span className="text-slate-505 font-semibold italic">null</span>
+        {!isLast && <span className="text-slate-505">,</span>}
+      </div>
+    );
+  }
+
+  const type = typeof val;
+
+  if (type === 'string') {
+    return (
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px] break-all">
+        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+        {label && <span className="text-slate-500 mr-1">:</span>}
+        <span className="text-emerald-400">"{val}"</span>
+        {!isLast && <span className="text-slate-550">,</span>}
+      </div>
+    );
+  }
+
+  if (type === 'number') {
+    return (
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px]">
+        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+        {label && <span className="text-slate-500 mr-1">:</span>}
+        <span className="text-amber-500 font-bold">{val}</span>
+        {!isLast && <span className="text-slate-550">,</span>}
+      </div>
+    );
+  }
+
+  if (type === 'boolean') {
+    return (
+      <div className="pl-4 py-0.5 select-text font-mono text-[11px]">
+        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+        {label && <span className="text-slate-500 mr-1">:</span>}
+        <span className="text-violet-400 font-black">{val.toString()}</span>
+        {!isLast && <span className="text-slate-550">,</span>}
+      </div>
+    );
+  }
+
+  if (Array.isArray(val)) {
+    if (val.length === 0) {
+      return (
+        <div className="pl-4 py-0.5 font-mono text-[11px]">
+          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+          {label && <span className="text-slate-500 mr-1">:</span>}
+          <span className="text-slate-600">[]</span>
+          {!isLast && <span className="text-slate-500">,</span>}
+        </div>
+      );
+    }
+
+    return (
+      <div className="pl-4 py-0.5 font-mono text-[11px]">
+        <div 
+          className="flex items-center gap-1.5 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors" 
+          onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+        >
+          <span className={cn("text-slate-500 text-[8px] transition-transform duration-150 inline-block", collapsed ? "-rotate-90" : "rotate-0")}>▼</span>
+          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+          {label && <span className="text-slate-500 mr-1">:</span>}
+          <span className="text-slate-400 text-[10px]">Array({val.length})</span>
+          <span className="text-slate-450 ml-1">{"["}</span>
+          {collapsed && <span className="text-slate-500">... ]</span>}
+        </div>
+        {!collapsed && (
+          <div className="border-l border-slate-800/40 ml-1.5 pl-3 transition-all">
+            {val.map((item, idx) => (
+              <LabJsonInteractiveNode key={idx} val={item} isLast={idx === val.length - 1} />
+            ))}
+          </div>
+        )}
+        {!collapsed && <div className="text-slate-500 pl-4">{"]"}{!isLast && ","}</div>}
+      </div>
+    );
+  }
+
+  if (type === 'object') {
+    const keys = Object.keys(val);
+    if (keys.length === 0) {
+      return (
+        <div className="pl-4 py-0.5 font-mono text-[11px]">
+          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+          {label && <span className="text-slate-500 mr-1">:</span>}
+          <span className="text-slate-600">{"{}"}</span>
+          {!isLast && <span className="text-slate-500">,</span>}
+        </div>
+      );
+    }
+
+    return (
+      <div className="pl-4 py-0.5 font-mono text-[11px]">
+        <div 
+          className="flex items-center gap-1.5 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors" 
+          onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+        >
+          <span className={cn("text-slate-500 text-[8px] transition-transform duration-150 inline-block", collapsed ? "-rotate-90" : "rotate-0")}>▼</span>
+          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+          {label && <span className="text-slate-500 mr-1">:</span>}
+          <span className="text-slate-400 font-sans text-[10px]">Object</span>
+          <span className="text-slate-450 ml-1">{"{"}</span>
+          {collapsed && <span className="text-slate-500">... {"}"}</span>}
+        </div>
+        {!collapsed && (
+          <div className="border-l border-slate-800/40 ml-1.5 pl-3 transition-all">
+            {keys.map((k, idx) => (
+              <LabJsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === keys.length - 1} />
+            ))}
+          </div>
+        )}
+        {!collapsed && <div className="text-slate-500 pl-4">{"}"}{!isLast && ","}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="pl-4 py-0.5 font-mono text-[11px]">
+      {label && <span className="text-blue-400 font-bold">"{label}"</span>}
+      {label && <span className="text-slate-500 mr-1">:</span>}
+      <span className="text-slate-400">{String(val)}</span>
+      {!isLast && <span className="text-slate-500">,</span>}
+    </div>
+  );
+}
 
 interface TestLabProps {
   config: RequestConfig;
@@ -226,6 +377,7 @@ interface TestLabProps {
 export function TestLab({ config, headersList, ws, activeTabId, loading, progress, results, onStart, onAbort, onChangeConfig, onClearLogs }: TestLabProps) {
   const [selectedModule, setSelectedModule] = useState<TestModuleId>('blast');
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
+  const [payloadTab, setPayloadTab] = useState<'pretty' | 'raw'>('pretty');
   const [iterationsPerUser, setIterationsPerUser] = useState(10);
   const [concurrency, setConcurrency] = useState(10);
   const [retries, setRetries] = useState(0);
@@ -238,6 +390,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [securityChecks, setSecurityChecks] = useState({ sqli: true, xss: true, pathTraversal: true, headersAuditor: true });
   const [chaosAmplitude, setChaosAmplitude] = useState(60);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
+  const [selectedRegions, setSelectedRegions] = useState<string[]>(['us', 'eu', 'apac', 'latam']);
 
   const activeModule = useMemo(() => {
     return TEST_MODULES.find(m => m.id === selectedModule) || TEST_MODULES[0];
@@ -259,10 +412,58 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
         return `# Overlapping Collision Script\nfor i in {1..${concurrency}}; do\n  ${baseCurl} &\ndone\nwait`;
       case 'fuzzer':
         return `# Mutation Fuzzer Input Script\nfor i in {1..20}; do\n  # Injected field mutation logic\n  ${baseCurl}\ndone`;
+      case 'distributed':
+        return `# Geographically Distributed Load Simulation Script
+# Spoofs CDN origin headers & client user-agents across selected nodes
+
+# Selected Regions: ${selectedRegions.join(', ').toUpperCase()}
+
+simulate_region_request() {
+  local REGION=$1
+  local IP=""
+  local UA=""
+  
+  case $REGION in
+    "us")
+      IP="54.210.23.$((RANDOM % 254 + 1))"
+      UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      ;;
+    "eu")
+      IP="185.190.140.$((RANDOM % 254 + 1))"
+      UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+      ;;
+    "apac")
+      IP="103.55.12.$((RANDOM % 254 + 1))"
+      UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      ;;
+    "latam")
+      IP="201.24.150.$((RANDOM % 254 + 1))"
+      UA="Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+      ;;
+  esac
+
+  curl -s -L -X ${config.method} "${config.url || 'http://localhost:3000/api/endpoint'}" \\
+    -A "$UA" \\
+    -H "X-Forwarded-For: $IP" \\
+    -H "X-Real-IP: $IP" \\
+    -H "CF-Connecting-IP: $IP" \\
+    -H "True-Client-IP: $IP" \\
+    -H "Client-IP: $IP" \\
+    ${Object.entries(headersConfig).map(([k, v]) => `-H "${k}: ${v}"`).join(' \\\n    ')} \\
+    ${config.body ? `-d '${config.body}'` : ''}
+}
+
+# Run distributed iterations in parallel
+for i in {1..${iterationsPerUser}}; do
+  for REGION in ${selectedRegions.join(' ')}; do
+    simulate_region_request "$REGION" &
+  done
+done
+wait`;
       default:
         return baseCurl;
     }
-  }, [selectedModule, config, totalIterations, concurrency]);
+  }, [selectedModule, config, totalIterations, concurrency, selectedRegions, iterationsPerUser]);
 
   // Compute Latency categories dynamically
   const latencyCategories = useMemo(() => {
@@ -303,6 +504,55 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
     };
   }, [results]);
 
+  // Geographical distributed metrics breakdown
+  const regionalBreakdown = useMemo(() => {
+    if (selectedModule !== 'distributed' || results.length === 0) return null;
+    const regions: Record<string, { count: number; ok: number; sumTime: number; flag: string; label: string }> = {
+      'us': { count: 0, ok: 0, sumTime: 0, flag: '🇺🇸', label: 'North America (US)' },
+      'eu': { count: 0, ok: 0, sumTime: 0, flag: '🇩🇪', label: 'Europe (EU)' },
+      'apac': { count: 0, ok: 0, sumTime: 0, flag: '🇯🇵', label: 'Asia-Pacific (APAC)' },
+      'latam': { count: 0, ok: 0, sumTime: 0, flag: '🇧🇷', label: 'Latin America (LATAM)' }
+    };
+
+    results.forEach(r => {
+      let key = 'us';
+      const c = r.simulatedCountry?.toLowerCase() || '';
+      const regName = r.simulatedRegion?.toLowerCase() || '';
+      if (regName.includes('frankfurt') || regName.includes('london') || regName.includes('france') || regName.includes('belgium') || regName.includes('italy') || c === 'germany' || c.includes('united kingdom') || c === 'france' || c === 'italy' || c === 'belgium') {
+        key = 'eu';
+      } else if (regName.includes('tokyo') || regName.includes('singapore') || regName.includes('india') || regName.includes('australia') || c === 'japan' || c === 'singapore' || c === 'india' || c === 'australia') {
+        key = 'apac';
+      } else if (regName.includes('são paulo') || regName.includes('brazil') || regName.includes('argentina') || regName.includes('mexico') || regName.includes('colombia') || c === 'brazil' || c === 'argentina' || c === 'mexico' || c === 'colombia') {
+        key = 'latam';
+      }
+
+      const reg = regions[key];
+      if (reg) {
+        reg.count++;
+        let fails = 0;
+        assertions.forEach(a => {
+          if (a.type === 'STATUS_CODE') {
+            if (r.status.toString() !== a.value) fails++;
+          } else if (a.type === 'LATENCY_LESS_THAN') {
+            const limit = parseInt(a.value) || 1000;
+            if (r.responseTime >= limit) fails++;
+          } else if (a.type === 'CONTAINS_TEXT') {
+            if (!(r.body && r.body.toLowerCase().includes(a.value.toLowerCase()))) fails++;
+          }
+        });
+        if (fails === 0) reg.ok++;
+        reg.sumTime += r.responseTime;
+      }
+    });
+
+    return Object.entries(regions).map(([id, val]) => ({
+      id,
+      ...val,
+      avgTime: val.count > 0 ? Math.round(val.sumTime / val.count) : 0,
+      successPct: val.count > 0 ? Math.round((val.ok / val.count) * 100) : 0
+    }));
+  }, [results, selectedModule, assertions]);
+
   // Assertion evaluator
   const checkAssertion = (res: CurlResult, assertion: { type: string, value: string }) => {
     if (assertion.type === 'STATUS_CODE') {
@@ -314,6 +564,63 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
     }
     if (assertion.type === 'CONTAINS_TEXT') {
       return !!(res.body && res.body.toLowerCase().includes(assertion.value.toLowerCase()));
+    }
+    if (assertion.type === 'HEADER_EXISTS') {
+      return !!(res.headers && res.headers[assertion.value.toLowerCase()] !== undefined);
+    }
+    if (assertion.type === 'HEADER_VALUE') {
+      const parts = assertion.value.split(':');
+      if (parts.length >= 2) {
+        const name = parts[0].trim().toLowerCase();
+        const expectedVal = parts.slice(1).join(':').trim().toLowerCase();
+        return !!(res.headers && res.headers[name] !== undefined && res.headers[name].toLowerCase().includes(expectedVal));
+      }
+      return false;
+    }
+    if (assertion.type === 'SCHEMA_KEY') {
+      if (!res.body) return false;
+      try {
+        const json = JSON.parse(res.body);
+        const searchPath = assertion.value.trim();
+        
+        const resolvePath = (obj: any, path: string): boolean => {
+          let current = obj;
+          const steps = path.split('.');
+          for (const step of steps) {
+            if (current === null || typeof current !== 'object') return false;
+            if (Array.isArray(current)) {
+              if (step === 'length') return current.length > 0;
+              const index = parseInt(step, 10);
+              if (!isNaN(index)) {
+                current = current[index];
+                continue;
+              }
+              return current.some(item => resolvePath(item, step));
+            }
+            if (!(step in current)) return false;
+            current = current[step];
+          }
+          return current !== undefined;
+        };
+
+        return resolvePath(json, searchPath);
+      } catch (e) {
+        return false;
+      }
+    }
+    if (assertion.type === 'HTTPS_ENFORCED') {
+      const hasHttps = (config.url || '').toLowerCase().startsWith('https://');
+      return hasHttps;
+    }
+    if (assertion.type === 'IDEMPOTENCY_MATCH') {
+      const bodyClean = (res.body || '').toLowerCase();
+      const hasIdemHeader = !!(res.headers && (
+        res.headers['idempotency-key'] !== undefined ||
+        res.headers['x-idempotency-key'] !== undefined ||
+        res.headers['x-cache'] !== undefined
+      ));
+      const okStatus = res.status < 300;
+      return hasIdemHeader || okStatus || bodyClean.includes('idempotency') || bodyClean.includes('duplicate');
     }
     return true;
   };
@@ -333,7 +640,8 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       retries,
       assertions: assertions.map(a => ({ type: a.type, value: a.value })),
       fuzzerChecks,
-      securityChecks
+      securityChecks,
+      regions: selectedRegions
     });
   };
 
@@ -640,7 +948,190 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
           <div className="p-5 space-y-6 flex-grow">
             
-            {/* Simulation presets removed */}
+            {/* QA Test Preset Templates Section */}
+            <div className="space-y-3 bg-slate-900/40 p-4 border border-slate-800 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">Automated QA Presets</span>
+                <span className="text-[9px] text-slate-500 font-mono font-bold uppercase">Ready Templates</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
+                Click a test suite preset to auto-initialize headers, bodies, parameters, and assertions for verification.
+              </p>
+              <div className="grid grid-cols-1 gap-2 pt-1">
+                {[
+                  {
+                    id: 'PRESET_IDEMPOTENCY',
+                    name: 'Idempotency Validation',
+                    desc: 'Checks POST / DELETE attempts with idempotency variables and keys.',
+                    icon: <Repeat size={12} className="text-blue-400" />,
+                    setup: () => {
+                      if (onChangeConfig) {
+                        onChangeConfig({
+                          method: 'POST',
+                          body: config.body || JSON.stringify({ transaction_id: "IDEM_TX_" + Math.floor(Math.random() * 100000), amount: 150.00, user_id: 1024 }),
+                          headers: {
+                            ...config.headers,
+                            'Idempotency-Key': 'IDEM_' + Math.random().toString(36).substring(2, 10),
+                            'X-Request-ID': 'REQ_' + Math.random().toString(36).substring(2, 10)
+                          }
+                        });
+                      }
+                      setAssertions([
+                        { id: '1', type: 'STATUS_CODE', value: '250' }, // Accepts normal/created responses
+                        { id: '2', type: 'IDEMPOTENCY_MATCH', value: 'true' }
+                      ]);
+                      setSelectedPresetId('PRESET_IDEMPOTENCY');
+                      setSelectedModule('replay');
+                    }
+                  },
+                  {
+                    id: 'PRESET_SCHEMA',
+                    name: 'Schema & Field Integrity',
+                    desc: 'Validates required model fields, type compliance, and data consistency.',
+                    icon: <Cpu size={12} className="text-cyan-400" />,
+                    setup: () => {
+                      setAssertions([
+                        { id: '1', type: 'STATUS_CODE', value: '200' },
+                        { id: '2', type: 'SCHEMA_KEY', value: 'id' }
+                      ]);
+                      setSelectedPresetId('PRESET_SCHEMA');
+                      setSelectedModule('fuzzer');
+                    }
+                  },
+                  {
+                    id: 'PRESET_PAGINATION',
+                    name: 'Pagination Boundaries',
+                    desc: 'Checks offset/limit boundaries, sorting directions, and cursors.',
+                    icon: <List size={12} className="text-amber-400" />,
+                    setup: () => {
+                      try {
+                        const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
+                        urlObj.searchParams.set('page', '1');
+                        urlObj.searchParams.set('limit', '10');
+                        urlObj.searchParams.set('sort', 'desc');
+                        if (onChangeConfig) {
+                          onChangeConfig({ url: urlObj.toString() });
+                        }
+                      } catch (e) {
+                        try {
+                          if (onChangeConfig) {
+                            onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'page=1&limit=10&sort=desc' });
+                          }
+                        } catch {}
+                      }
+                      setAssertions([
+                        { id: '1', type: 'STATUS_CODE', value: '200' },
+                        { id: '2', type: 'SCHEMA_KEY', value: 'limit' }
+                      ]);
+                      setSelectedPresetId('PRESET_PAGINATION');
+                      setSelectedModule('scenario');
+                    }
+                  },
+                  {
+                    id: 'PRESET_PERFORMANCE',
+                    name: 'SLA Performance Test',
+                    desc: 'Evaluates peak latencies to keep transactions strictly under 500ms.',
+                    icon: <Zap size={12} className="text-orange-400" />,
+                    setup: () => {
+                      setConcurrency(10);
+                      setIterationsPerUser(5);
+                      setAssertions([
+                        { id: '1', type: 'STATUS_CODE', value: '200' },
+                        { id: '2', type: 'LATENCY_LESS_THAN', value: '500' }
+                      ]);
+                      setSelectedPresetId('PRESET_PERFORMANCE');
+                      setSelectedModule('blast');
+                    }
+                  },
+                  {
+                    id: 'PRESET_SECURITY',
+                    name: 'Security Shield Audit',
+                    desc: 'Audits unescaped vectors, safe protocols, and missing CORS security headers.',
+                    icon: <ShieldAlert size={12} className="text-rose-400" />,
+                    setup: () => {
+                      setAssertions([
+                        { id: '1', type: 'HTTPS_ENFORCED', value: 'true' },
+                        { id: '2', type: 'HEADER_EXISTS', value: 'x-frame-options' }
+                      ]);
+                      setSelectedPresetId('PRESET_SECURITY');
+                      setSelectedModule('security_audit');
+                    }
+                  },
+                  {
+                    id: 'PRESET_VERSIONING',
+                    name: 'API Version Verification',
+                    desc: 'Tests API clients version selectors (Accept or custom HTTP headers).',
+                    icon: <Server size={12} className="text-violet-400" />,
+                    setup: () => {
+                      if (onChangeConfig) {
+                        onChangeConfig({
+                          headers: {
+                            ...config.headers,
+                            'Accept': 'application/vnd.myapi.v2+json',
+                            'X-API-Version': '2026-05-31'
+                          }
+                        });
+                      }
+                      setAssertions([
+                        { id: '1', type: 'STATUS_CODE', value: '200' },
+                        { id: '2', type: 'HEADER_EXISTS', value: 'x-api-version' }
+                      ]);
+                      setSelectedPresetId('PRESET_VERSIONING');
+                      setSelectedModule('scenario');
+                    }
+                  },
+                  {
+                    id: 'PRESET_ISOLATION',
+                    name: 'Transactional Isolation Check',
+                    desc: 'Validates that testing records use dynamic variables and safe boundaries.',
+                    icon: <Target size={12} className="text-emerald-400" />,
+                    setup: () => {
+                      const randVal = Math.floor(Math.random() * 999999);
+                      try {
+                        const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
+                        urlObj.searchParams.set('isolated_tx_id', 'TX_' + randVal);
+                        if (onChangeConfig) {
+                          onChangeConfig({ url: urlObj.toString() });
+                        }
+                      } catch (e) {
+                        if (onChangeConfig) {
+                          onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'isolated_tx_id=TX_' + randVal });
+                        }
+                      }
+                      setAssertions([
+                        { id: '1', type: 'STATUS_CODE', value: '200' },
+                        { id: '2', type: 'CONTAINS_TEXT', value: 'TX_' }
+                      ]);
+                      setSelectedPresetId('PRESET_ISOLATION');
+                      setSelectedModule('fuzzer');
+                    }
+                  }
+                ].map(p => {
+                  const isActive = selectedPresetId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={p.setup}
+                      type="button"
+                      className={cn(
+                        "w-full text-left p-2.5 rounded-lg border transition-all text-xs font-mono flex items-start gap-2.5 cursor-pointer select-none",
+                        isActive
+                          ? "bg-violet-950/40 border-violet-500/40 text-white shadow-lg"
+                          : "bg-black/30 border-slate-800/80 text-slate-350 hover:bg-slate-900/60 hover:border-slate-700 hover:text-white"
+                      )}
+                    >
+                      <div className="p-1.5 bg-black/60 rounded border border-slate-850 shrink-0">
+                        {p.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-extrabold text-slate-200 block text-[11px] leading-tight select-none">{p.name}</span>
+                        <span className="text-[10px] text-slate-450 leading-relaxed font-sans block mt-0.5 select-none">{p.desc}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Thread controls */}
             <div className="space-y-4">
@@ -777,6 +1268,49 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
               </div>
             )}
 
+            {selectedModule === 'distributed' && (
+              <div className="p-4 bg-violet-950/30 rounded-lg border border-violet-500/30 space-y-4">
+                <div className="text-xs font-black text-violet-400 tracking-widest flex items-center gap-2">
+                  <Globe size={14} /> Regional Simulation Nodes
+                </div>
+                <p className="text-[11px] text-slate-455 font-sans leading-relaxed">
+                  Toggle geographical locations to simulate incoming client headers & network latency hops.
+                </p>
+                <div className="space-y-2.5">
+                  {[
+                    { id: 'us', label: 'North America (US)', details: '10-50ms latency' },
+                    { id: 'eu', label: 'Europe (EU)', details: '70-150ms latency' },
+                    { id: 'apac', label: 'Asia-Pacific (APAC)', details: '150-270ms latency' },
+                    { id: 'latam', label: 'Latin America (LATAM)', details: '120-220ms latency' }
+                  ].map(region => {
+                    const active = selectedRegions.includes(region.id);
+                    return (
+                      <label key={region.id} className="flex items-center justify-between text-xs font-mono text-slate-300 hover:text-white cursor-pointer select-none border-b border-white/5 pb-1.5 last:border-b-0">
+                        <span className="flex items-center gap-2.5">
+                          <input 
+                            type="checkbox" 
+                            checked={active} 
+                            onChange={() => {
+                              if (active) {
+                                if (selectedRegions.length > 1) {
+                                  setSelectedRegions(selectedRegions.filter(r => r !== region.id));
+                                }
+                              } else {
+                                setSelectedRegions([...selectedRegions, region.id]);
+                              }
+                            }}
+                            className="w-4 h-4 accent-violet-500 bg-black border-slate-705 rounded transition-all cursor-pointer" 
+                          />
+                          {region.label}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-bold">{region.details}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Assertions Roster */}
             <div className="space-y-3 pt-4 border-t border-slate-800">
               <div className="flex items-center justify-between">
@@ -805,6 +1339,11 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                       <option value="STATUS_CODE" className="text-white bg-slate-900">STATUS ===</option>
                       <option value="LATENCY_LESS_THAN" className="text-white bg-slate-900">LATENCY &lt;</option>
                       <option value="CONTAINS_TEXT" className="text-white bg-slate-900">CONTAINS</option>
+                      <option value="HEADER_EXISTS" className="text-white bg-slate-900">HDR EXISTS</option>
+                      <option value="HEADER_VALUE" className="text-white bg-slate-900">HDR MATCH</option>
+                      <option value="SCHEMA_KEY" className="text-white bg-slate-900">JSON PATH</option>
+                      <option value="HTTPS_ENFORCED" className="text-white bg-slate-900">HTTPS CHECK</option>
+                      <option value="IDEMPOTENCY_MATCH" className="text-white bg-slate-900">IDEMPOTENT</option>
                     </select>
                     <input
                       value={item.value}
@@ -1167,6 +1706,63 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                          </div>
                        )}
 
+                        {/* Geographical Simulation Nodes Metrics Breakdown (Exclusive for Distributed load test mode) */}
+                        {selectedModule === 'distributed' && regionalBreakdown && results.length > 0 && (
+                          <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl mb-4 space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+                              <div className="flex items-center gap-2">
+                                <Globe size={14} className="text-violet-400 animate-pulse" />
+                                <span className="text-xs font-black tracking-wider text-slate-300 font-mono uppercase">Geographical Routing Quality Metrics</span>
+                              </div>
+                              <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">Node Breakdown</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
+                              {regionalBreakdown.map(region => {
+                                const isRegionActive = region.count > 0;
+                                return (
+                                  <div 
+                                    key={region.id} 
+                                    className={cn(
+                                      "p-3 rounded-lg border flex items-center justify-between",
+                                      isRegionActive 
+                                        ? "bg-black/60 border-violet-500/20 shadow-sm animate-in fade-in duration-300" 
+                                        : "bg-black/20 border-slate-900 opacity-40"
+                                    )}
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                                        <span>{region.flag}</span>
+                                        <span className="truncate max-w-[150px]">{region.label}</span>
+                                      </div>
+                                      <div className="text-[10px] text-slate-500 font-bold">
+                                        LOAD: <span className="text-violet-400 font-black">{region.count} REQS</span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right space-y-1 shrink-0">
+                                      <div className="text-xs font-black text-amber-400">
+                                        {region.avgTime > 0 ? `~${region.avgTime}ms` : '—'}
+                                      </div>
+                                      {region.count > 0 ? (
+                                        <div className={cn(
+                                          "text-[9px] font-black border rounded px-1.5 py-0.5 inline-block uppercase",
+                                          region.successPct >= 90 
+                                            ? "text-emerald-400 border-emerald-950 bg-emerald-950/20"
+                                            : "text-rose-400 border-rose-950 bg-rose-950/20"
+                                        )}>
+                                          {region.successPct}% PASS
+                                        </div>
+                                      ) : (
+                                        <div className="text-[9px] text-slate-600 font-bold">INACTIVE</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                        {results.length === 0 && !loading && (
                          <div className="h-full flex flex-col items-center justify-center p-20 opacity-40 text-center space-y-4">
                            <div className="w-16 h-16 border border-slate-700 border-dashed rounded-full flex items-center justify-center animate-spin-slow">
@@ -1206,9 +1802,20 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                {selectedModule === 'fuzzer' && <span className="text-cyan-400 font-extrabold mr-1.5">[MUTATED]</span>}
                                {selectedModule === 'replay' && <span className="text-blue-400 font-extrabold mr-1.5">[CLONED]</span>}
                                {selectedModule === 'chaos' && <span className="text-rose-455 font-extrabold mr-1.5">[CORRUPTED]</span>}
-                               {activeModule.name}
+                               {selectedModule === 'distributed' && res.simulatedIp ? (
+                                  <span className="text-violet-400 font-extrabold mr-1.5">
+                                    [DISTRIBUTED] {res.simulatedFlag} {res.simulatedIp} <span className="text-slate-500 font-black text-[10px]">({res.simulatedRegion?.split(' ')[0]})</span>
+                                  </span>
+                                ) : (
+                                  activeModule.name
+                                )}
                              </span>
-                             <div className="flex items-center shrink-0 ml-2">
+                             <div className="flex items-center shrink-0 ml-2 gap-1.5">
+                                {(res as any).retriesApplied !== undefined && (
+                                  <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30 font-mono tracking-wider flex items-center gap-1">
+                                    <Repeat size={10} className="animate-spin" /> {(res as any).retriesApplied}R
+                                  </span>
+                                )}
                                {passedAll ? (
                                  <span className="text-[10px] font-black text-emerald-400 uppercase font-mono bg-emerald-500/15 px-2.5 py-0.5 rounded border border-emerald-500/30">
                                    ✓ PASS
@@ -1241,11 +1848,38 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                         </div>
 
                         <div className="p-5 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-200 space-y-5">
+                           {selectedResult.simulatedIp && (
+                             <div className="bg-violet-950/20 p-3.5 rounded-lg border border-violet-500/30 space-y-2 animate-in fade-in zoom-in-95 duration-150 mb-4">
+                               <div className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-1.5">
+                                 <Globe size={12} /> Simulated Origin Edge Node
+                               </div>
+                               <div className="grid grid-cols-2 gap-3 text-[11px]">
+                                 <div>
+                                   <span className="text-slate-500 font-bold block mb-1 text-[9px]">IP ADDRESS</span>
+                                   <div className="text-white font-bold select-all">{selectedResult.simulatedIp}</div>
+                                 </div>
+                                 <div>
+                                   <span className="text-slate-500 font-bold block mb-1 text-[9px]">LOCATION</span>
+                                   <div className="text-white font-extrabold">{selectedResult.simulatedFlag} {selectedResult.simulatedCountry}</div>
+                                 </div>
+                               </div>
+                               <div className="text-[10px] text-slate-500 border-t border-violet-500/10 pt-2 font-bold flex items-center justify-between">
+                                 <span>ROUTING:</span>
+                                 <span className="text-violet-300 font-black">{selectedResult.simulatedRegion}</span>
+                               </div>
+                             </div>
+                           )}
+
                           <div className="grid grid-cols-2 gap-4">
                              <div className="bg-black/50 p-3 rounded-lg border border-slate-800">
                                 <div className="text-slate-400 text-[10px] uppercase tracking-wider mb-1 font-bold">Status Code</div>
-                                <div className={cn("text-lg font-black", selectedResult.status < 300 ? "text-emerald-400" : "text-rose-400")}>
-                                  {selectedResult.status}
+                                <div className={cn("text-lg font-black flex items-center justify-between", selectedResult.status < 300 ? "text-emerald-400" : "text-rose-400")}>
+                                  <span>{selectedResult.status}</span>
+                                  {(selectedResult as any).retriesApplied !== undefined && (
+                                    <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-550/20 tracking-wider">
+                                      {(selectedResult as any).retriesApplied} Retries
+                                    </span>
+                                  )}
                                 </div>
                              </div>
                              <div className="bg-black/50 p-3 rounded-lg border border-slate-800">
@@ -1286,10 +1920,118 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                           </div>
 
                           <div className="space-y-2 flex-grow">
-                            <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block border-b border-slate-800 pb-1.5">Response Payload</span>
-                            <pre className="bg-black p-3.5 rounded-lg border border-slate-800 text-xs text-emerald-450/90 whitespace-pre-wrap overflow-x-hidden min-h-[140px] max-h-72 overflow-y-auto custom-scrollbar select-all">
-                              {selectedResult.body || 'Empty Payload.'}
-                            </pre>
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5 select-none">
+                              <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block">Response Payload</span>
+                              <div className="flex gap-1 bg-black/60 p-0.5 rounded border border-slate-800/80">
+                                <button
+                                  onClick={() => setPayloadTab('pretty')}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-black font-mono transition-all cursor-pointer",
+                                    payloadTab === 'pretty'
+                                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                                      : "text-slate-500 hover:text-slate-300 border border-transparent"
+                                  )}
+                                >
+                                  PRETTY
+                                </button>
+                                <button
+                                  onClick={() => setPayloadTab('raw')}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-black font-mono transition-all cursor-pointer",
+                                    payloadTab === 'raw'
+                                      ? "bg-slate-800/80 text-slate-205 border border-slate-700/60"
+                                      : "text-slate-500 hover:text-slate-300 border border-transparent"
+                                  )}
+                                >
+                                  RAW
+                                </button>
+                              </div>
+                            </div>
+                            <div className="bg-black/35 p-3.5 rounded-lg border border-slate-800 text-xs text-emerald-450/90 min-h-[140px] max-h-[360px] overflow-y-auto custom-scrollbar select-text space-y-3">
+                              {payloadTab === 'pretty' ? (() => {
+                                 const bodyStr = (selectedResult.body || '').trim();
+                                 if (!bodyStr) {
+                                   return (
+                                     <div className="text-slate-500 italic text-xs">
+                                       Empty Payload
+                                     </div>
+                                   );
+                                 }
+
+                                 // HTML or SVG/Image Previews
+                                 const contentType = (selectedResult.headers['content-type'] || selectedResult.headers['Content-Type'] || '').toLowerCase();
+                                 if (contentType.includes('text/html') || bodyStr.startsWith('<!DOCTYPE') || bodyStr.startsWith('<html') || bodyStr.startsWith('<div')) {
+                                   return (
+                                     <div className="space-y-2">
+                                       <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded">
+                                         <span className="font-bold text-emerald-400 flex items-center gap-1">
+                                           <Layout size={10} /> sandboxed_html_frame
+                                         </span>
+                                       </div>
+                                       <iframe 
+                                         title="HTML Response Preview"
+                                         srcDoc={selectedResult.body || ''} 
+                                         sandbox="allow-scripts" 
+                                         loading="lazy"
+                                         className="w-full h-48 bg-white rounded-lg border border-slate-805"
+                                       />
+                                     </div>
+                                   );
+                                 }
+
+                                 if (contentType.includes('image/') || bodyStr.startsWith('<svg')) {
+                                   return (
+                                     <div className="space-y-2">
+                                       <div className="flex justify-between items-center text-[9px] text-slate-550 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded">
+                                         <span className="font-bold text-blue-400 flex items-center gap-1">
+                                           <Activity size={10} /> rendered_asset
+                                         </span>
+                                       </div>
+                                       <div className="flex items-center justify-center p-4 bg-slate-950/60 border border-slate-900 rounded-lg min-h-[120px]">
+                                         {bodyStr.startsWith('<svg') ? (
+                                           <div dangerouslySetInnerHTML={{ __html: selectedResult.body || '' }} className="max-w-full max-h-[150px]" />
+                                         ) : (
+                                           <img 
+                                             src={bodyStr.startsWith('data:') ? bodyStr : `data:${contentType};base64,${bodyStr}`} 
+                                             alt="Response Asset" 
+                                             className="max-w-full max-h-[150px] object-contain border border-slate-850 rounded" 
+                                             referrerPolicy="no-referrer"
+                                           />
+                                         )}
+                                       </div>
+                                     </div>
+                                   );
+                                 }
+
+                                 try {
+                                   const json = JSON.parse(bodyStr);
+                                   return (
+                                     <div className="space-y-2 select-text font-mono">
+                                       <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded select-none">
+                                         <span className="font-bold text-emerald-500 flex items-center gap-1">
+                                           <FileJson size={10} /> interactive_json_explorer
+                                         </span>
+                                         <span className="text-[8px] text-slate-650 font-semibold">Click arrows to browse</span>
+                                       </div>
+                                       <div className="bg-slate-950/30 border border-slate-900/60 p-2.5 rounded-lg overflow-x-auto max-h-[280px] custom-scrollbar text-emerald-400/90 leading-relaxed text-xs">
+                                         <LabJsonInteractiveNode val={json} isLast={true} />
+                                       </div>
+                                     </div>
+                                   );
+                                 } catch {
+                                   // Beautiful fallback text container
+                                   return (
+                                     <pre className="text-emerald-450/90 whitespace-pre-wrap overflow-x-hidden min-h-[80px] max-h-72 overflow-y-auto custom-scrollbar select-all text-xs font-mono">
+                                       {selectedResult.body}
+                                     </pre>
+                                   );
+                                 }
+                               })() : (
+                                 <pre className="text-emerald-450/95 whitespace-pre-wrap overflow-x-hidden min-h-[80px] max-h-72 overflow-y-auto custom-scrollbar select-all leading-relaxed text-xs font-mono">
+                                   {selectedResult.body || 'Empty Payload.'}
+                                 </pre>
+                               )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1312,14 +2054,30 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                 <Globe size={15} className="text-blue-400" /> Endpoint HTTP curl snippet
                               </span>
                               <button 
-                                onClick={() => copyToClipboard(`curl -X ${config.method} "${config.url || 'http://localhost:3000/api'}"`)}
+                                onClick={() => {
+                                  const headersConfig = config.headers || {};
+                                  const textToCopy = selectedModule === 'distributed' ? 
+                                    `curl -X ${config.method} "${config.url || 'http://localhost:3000/api'}" \\\n  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \\\n  -H "X-Forwarded-For: 54.210.23.42" \\\n  -H "X-Real-IP: 54.210.23.42" \\\n  -H "CF-Connecting-IP: 54.210.23.42" \\\n  -H "True-Client-IP: 54.210.23.42" \\\n  -H "Client-IP: 54.210.23.42"${Object.entries(headersConfig).length > 0 ? ` \\\n  ${Object.entries(headersConfig).map(([k, v]) => `-H "${k}: ${v}"`).join(' \\\n  ')}` : ''}${config.body ? ` \\\n  -d '${config.body}'` : ''}` :
+                                    `curl -X ${config.method} "${config.url || 'http://localhost:3000/api'}"${Object.entries(headersConfig).length > 0 ? ` \\\n  ${Object.entries(headersConfig).map(([k, v]) => `-H "${k}: ${v}"`).join(' \\\n  ')}` : ''}${config.body ? ` \\\n  -d '${config.body}'` : ''}`;
+                                  copyToClipboard(textToCopy);
+                                }}
                                 className="text-slate-400 hover:text-white transition-colors p-1"
                               >
                                 <Copy size={15} />
                               </button>
                            </div>
                            <pre className="bg-[#0F1115] p-3.5 rounded-lg border border-slate-800 text-xs font-mono text-blue-350 break-all whitespace-pre-wrap leading-relaxed select-all">
-                              {`curl -X ${config.method} "${config.url || 'http://localhost:3000/api'}" \\\n  ${Object.entries(config.headers || {}).map(([k, v]) => `-H "${k}: ${v}"`).join(' \\\n  ')}${config.body ? ` \\\n  -d '${config.body}'` : ''}`}
+                              {selectedModule === 'distributed' ? (
+                                `curl -X ${config.method} "${config.url || 'http://localhost:3000/api'}" \\
+  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \\
+  -H "X-Forwarded-For: 54.210.23.42" \\
+  -H "X-Real-IP: 54.210.23.42" \\
+  -H "CF-Connecting-IP: 54.210.23.42" \\
+  -H "True-Client-IP: 54.210.23.42" \\
+  -H "Client-IP: 54.210.23.42" ${Object.entries(config.headers || {}).map(([k, v]) => `\\\n  -H "${k}: ${v}"`).join('')}${config.body ? ` \\\n  -d '${config.body}'` : ''}`
+                              ) : (
+                                `curl -X ${config.method} "${config.url || 'http://localhost:3000/api'}" \\\n  ${Object.entries(config.headers || {}).map(([k, v]) => `-H "${k}: ${v}"`).join(' \\\n  ')}${config.body ? ` \\\n  -d '${config.body}'` : ''}`
+                              )}
                            </pre>
                         </div>
 

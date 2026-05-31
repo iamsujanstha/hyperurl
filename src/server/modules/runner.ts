@@ -11,6 +11,51 @@ export interface BatchConfig {
   jitter?: boolean;
   fuzzing?: boolean;
   retries?: number;
+  regions?: string[];
+}
+
+function getRandomRegionIp(region: string) {
+  const data: Record<string, { ip: string; country: string; flag: string; regionName: string }[]> = {
+    us: [
+      { ip: "54.210.23.111", country: "United States", flag: "🇺🇸", regionName: "us-east-1 (N. Virginia)" },
+      { ip: "198.51.100.42", country: "United States", flag: "🇺🇸", regionName: "us-west-2 (Oregon)" },
+      { ip: "172.56.21.99", country: "United States", flag: "🇺🇸", regionName: "T-Mobile USA" },
+      { ip: "34.200.45.12", country: "United States", flag: "🇺🇸", regionName: "AWS US East" },
+      { ip: "66.249.66.1", country: "United States", flag: "🇺🇸", regionName: "Googlebot IP" }
+    ],
+    eu: [
+      { ip: "185.190.140.22", country: "Germany", flag: "🇩🇪", regionName: "eu-central-1 (Frankfurt)" },
+      { ip: "46.101.99.182", country: "United Kingdom", flag: "🇬🇧", regionName: "eu-west-2 (London)" },
+      { ip: "5.145.2.103", country: "France", flag: "🇫🇷", regionName: "Orange S.A." },
+      { ip: "34.76.120.45", country: "Belgium", flag: "🇧🇪", regionName: "GCP Europe" },
+      { ip: "109.110.220.55", country: "Italy", flag: "🇮🇹", regionName: "Telecom Italia" }
+    ],
+    apac: [
+      { ip: "103.55.12.9", country: "Japan", flag: "🇯🇵", regionName: "ap-northeast-1 (Tokyo)" },
+      { ip: "210.140.10.82", country: "Japan", flag: "🇯🇵", regionName: "Softbank Japan" },
+      { ip: "122.11.168.42", country: "Singapore", flag: "🇸🇬", regionName: "ap-southeast-1 (Singapore)" },
+      { ip: "13.250.45.19", country: "Singapore", flag: "🇸🇬", regionName: "AWS Asia Pac" },
+      { ip: "1.186.20.100", country: "India", flag: "🇮🇳", regionName: "Reliance Jio" },
+      { ip: "203.104.5.12", country: "Australia", flag: "🇦🇺", regionName: "ap-southeast-2 (Sydney)" }
+    ],
+    latam: [
+      { ip: "201.24.150.31", country: "Brazil", flag: "🇧🇷", regionName: "sa-east-1 (São Paulo)" },
+      { ip: "186.200.12.55", country: "Brazil", flag: "🇧🇷", regionName: "Claro Telecom" },
+      { ip: "190.15.220.4", country: "Argentina", flag: "🇦🇷", regionName: "Telecom Argentina" },
+      { ip: "187.141.50.12", country: "Mexico", flag: "🇲🇽", regionName: "Telmex Mexico" },
+      { ip: "190.157.30.40", country: "Colombia", flag: "🇨🇴", regionName: "Movistar Colombia" }
+    ]
+  };
+
+  const list = data[region] || data.us;
+  const base = list[Math.floor(Math.random() * list.length)];
+  const octets = base.ip.split('.');
+  octets[3] = Math.floor(Math.random() * 254 + 1).toString();
+  const realisticIp = octets.join('.');
+  return {
+    ...base,
+    ip: realisticIp
+  };
 }
 
 export interface ProgressUpdate {
@@ -29,7 +74,7 @@ export class RequestRunner {
     onProgress?: (update: ProgressUpdate) => void,
     signal?: AbortSignal
   ): Promise<CurlResult[]> {
-    const { request, requests, concurrency, iterations, delayMs = 0, testModule, jitter, fuzzing, retries = 0 } = config;
+    const { request, requests, concurrency, iterations, delayMs = 0, testModule, jitter, fuzzing, retries = 0, regions } = config;
     
     // If requests array is provided, iterations matches its length
     const total = requests ? requests.length : iterations;
@@ -49,7 +94,53 @@ export class RequestRunner {
 
           let finalRequest = requests ? { ...requests[index] } : { ...request! };
 
-        // --- Module-Specific Instrumentation ---
+          // --- Module-Specific Instrumentation ---
+
+          // 6. Distributed Load Test Simulation: Spoof IP headers, User-Agent, and geographical routing latency
+          let simulatedIp: string | undefined;
+          let simulatedCountry: string | undefined;
+          let simulatedFlag: string | undefined;
+          let simulatedRegion: string | undefined;
+
+          if (testModule === 'distributed') {
+            const chosenRegions = regions && regions.length > 0 ? regions : ['us', 'eu', 'apac', 'latam'];
+            const region = chosenRegions[Math.floor(Math.random() * chosenRegions.length)];
+            const info = getRandomRegionIp(region);
+            simulatedIp = info.ip;
+            simulatedCountry = info.country;
+            simulatedFlag = info.flag;
+            simulatedRegion = info.regionName;
+
+            const headers = { 
+              ...finalRequest.headers,
+              'X-Forwarded-For': simulatedIp,
+              'X-Real-IP': simulatedIp,
+              'CF-Connecting-IP': simulatedIp,
+              'True-Client-IP': simulatedIp,
+              'Client-IP': simulatedIp
+            };
+            
+            const userAgents = [
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+              "Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+            ];
+            headers['User-Agent'] = userAgents[Math.floor(Math.random() * userAgents.length)];
+            finalRequest.headers = headers;
+
+            // Introduce regional routing roundtrip delays
+            let baseLatency = 0;
+            if (region === 'us') baseLatency = Math.random() * 40 + 10;
+            else if (region === 'eu') baseLatency = Math.random() * 80 + 70;
+            else if (region === 'apac') baseLatency = Math.random() * 120 + 150;
+            else if (region === 'latam') baseLatency = Math.random() * 100 + 120;
+            
+            if (baseLatency > 0) {
+              await new Promise(r => setTimeout(r, baseLatency));
+            }
+          }
 
         // 1. Race Detector: Extreme jittered clustering
         if (testModule === 'race') {
@@ -227,12 +318,28 @@ export class RequestRunner {
             }, signal);
             
             if (res.status >= 400 && attempt < retries) {
+              if (res.status >= 500 && res.status < 600) {
+                // Exponential backoff for 5xx status codes
+                const backoffBase = 200;
+                const jitter = Math.random() * 50;
+                const delay = Math.pow(2, attempt) * backoffBase + jitter;
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
               attempt++;
               return executeWithRetry();
+            }
+            if (attempt > 0) {
+              (res as any).retriesApplied = attempt;
             }
             return res;
           } catch (e: any) {
             if (attempt < retries) {
+              // Try again with exponential backoff on fetch exceptions (treated as transient 5xx issues)
+              const backoffBase = 200;
+              const jitter = Math.random() * 50;
+              const delay = Math.pow(2, attempt) * backoffBase + jitter;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              
               attempt++;
               return executeWithRetry();
             }
@@ -241,6 +348,12 @@ export class RequestRunner {
         };
 
         result = await executeWithRetry();
+        if (testModule === 'distributed') {
+          result.simulatedIp = simulatedIp;
+          result.simulatedCountry = simulatedCountry;
+          result.simulatedFlag = simulatedFlag;
+          result.simulatedRegion = simulatedRegion;
+        }
 
         results.push(result);
         completed++;

@@ -20,6 +20,10 @@ export interface CurlResult {
   error?: string;
   curlCommand: string;
   requestSize?: number;
+  simulatedIp?: string;
+  simulatedCountry?: string;
+  simulatedFlag?: string;
+  simulatedRegion?: string;
 }
 
 export class CurlEngine {
