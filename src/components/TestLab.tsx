@@ -667,7 +667,8 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       assertions: assertions.map(a => ({ type: a.type, value: a.value })),
       fuzzerChecks,
       securityChecks,
-      regions: selectedRegions
+      regions: selectedRegions,
+      rotateIps: selectedModule === 'distributed'
     });
   };
 
@@ -884,33 +885,34 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       {/* HUD Header */}
       <div className="p-4 border-b border-[#1E293B] bg-[#0F1115] shrink-0 flex flex-col md:flex-row md:items-center justify-start gap-4">
         {/* Dynamic Interactive Endpoint Changer - Direct Access */}
-        <div className="flex-1 w-full bg-black/50 border border-slate-800 rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-755 rounded-lg px-2.5 shrink-0 h-10">
-            <span className="text-xs font-mono text-slate-400 uppercase font-black tracking-wider select-none whitespace-nowrap">METHOD:</span>
+        <div className="flex-1 w-full bg-[#0F1115] border border-slate-800 rounded-xl overflow-hidden focus-within:border-emerald-500/50 transition-all flex flex-col sm:flex-row items-stretch sm:items-center">
+          <div className="flex items-center gap-2 px-3 border-b sm:border-b-0 sm:border-r border-slate-800 shrink-0 bg-slate-900/30 h-11 select-none">
+            <span className="text-[10px] font-mono text-slate-500 uppercase font-bold tracking-wider select-none whitespace-nowrap">METHOD</span>
             <select
               value={config.method || 'GET'}
               onChange={(e) => onChangeConfig?.({ method: e.target.value as any })}
               className={cn(
-                "bg-transparent text-sm font-black font-mono cursor-pointer outline-none border-none py-1 focus:ring-0",
+                "bg-transparent text-xs font-bold font-mono cursor-pointer outline-none border-none py-1 focus:ring-0 appearance-none pr-1 text-center min-w-[70px]",
                 config.method === 'GET' ? "text-emerald-400" :
-                config.method === 'POST' ? "text-blue-400" :
-                config.method === 'DELETE' ? "text-rose-400" : "text-amber-400"
+                config.method === 'POST' ? "text-blue-500" :
+                config.method === 'DELETE' ? "text-rose-500" : "text-amber-500"
               )}
             >
               {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'GRAPHQL'].map(m => (
                 <option key={m} value={m} className="bg-[#0B0D11] text-white font-mono font-bold text-xs">{m}</option>
               ))}
             </select>
+            <ChevronDown size={11} className="text-slate-505 -ml-1.5 pointer-events-none" />
           </div>
 
-          <div className="flex-1 flex items-center gap-2.5 bg-slate-900 border border-slate-755 rounded-lg px-3.5 h-10">
-            <span className="text-xs font-mono text-slate-400 uppercase font-black tracking-wider select-none">URL:</span>
+          <div className="flex-grow flex items-center gap-2 px-4 h-11">
+            <span className="text-[10px] font-mono text-slate-500 uppercase font-bold tracking-wider select-none shrink-0">URL</span>
             <input
               type="text"
               value={config.url || ''}
               onChange={(e) => onChangeConfig?.({ url: e.target.value })}
               placeholder="Enter endpoint target URL..."
-              className="flex-grow bg-transparent text-xs sm:text-sm font-mono text-emerald-400 outline-none placeholder-slate-500 min-w-0"
+              className="flex-grow bg-transparent text-xs sm:text-sm font-mono text-emerald-400 outline-none placeholder-slate-600 min-w-0 font-medium"
             />
           </div>
         </div>
@@ -981,9 +983,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                   );
                 })}
               </div>
-              <p className="text-[10px] text-slate-400 font-sans leading-relaxed pt-1 select-none">
-                {activeModule.description}
-              </p>
             </div>
 
             {/* Thread controls & Error Mitigation */}
@@ -1027,6 +1026,8 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                     <span className="text-slate-350 font-bold">Cumulative Load:</span>
                     <span className="text-emerald-400 font-black text-sm">{totalIterations} requests total</span>
                   </div>
+
+
                 </div>
 
                 <div className="space-y-2">
@@ -1600,7 +1601,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                 {labTab === 'logs' && (
                   <div className="flex-1 flex overflow-hidden relative">
                     {/* Log list with proper text sizes for great legibility */}
-                    <div className={cn("flex-grow overflow-y-auto p-5 custom-scrollbar space-y-2 bg-[#050608]/50", selectedResult ? "hidden xl:block" : "block")}>
+                    <div className={cn("flex-grow overflow-y-auto p-5 custom-scrollbar space-y-2 bg-[#050608]/50", selectedResult ? "hidden lg:block" : "block")}>
                        
                        {/* Assessment Diagnostics complete summary panel once test is completed */}
                        {!loading && results.length > 0 && (
@@ -1903,9 +1904,10 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                                {selectedModule === 'fuzzer' && <span className="text-cyan-400 font-extrabold mr-1.5">[MUTATED]</span>}
                                {selectedModule === 'replay' && <span className="text-blue-400 font-extrabold mr-1.5">[CLONED]</span>}
                                {selectedModule === 'chaos' && <span className="text-rose-455 font-extrabold mr-1.5">[CORRUPTED]</span>}
-                               {selectedModule === 'distributed' && res.simulatedIp ? (
-                                  <span className="text-violet-400 font-extrabold mr-1.5">
-                                    [DISTRIBUTED] {res.simulatedFlag} {res.simulatedIp} <span className="text-slate-500 font-black text-[10px]">({res.simulatedRegion?.split(' ')[0]})</span>
+                               {res.simulatedIp ? (
+                                  <span className="text-violet-400 font-extrabold mr-1.5 inline-flex items-center gap-1.5">
+                                    <Globe size={11} className="text-violet-400 animate-pulse" />
+                                    [DISTRIBUTED] {res.simulatedFlag} {res.simulatedIp} <span className="text-slate-500 font-black text-[9px]">({res.simulatedRegion?.split(' ')[0]})</span>
                                   </span>
                                 ) : (
                                   activeModule.name
@@ -1938,19 +1940,19 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                     {/* Side-by-Side inline description details */}
                     {selectedResult && (
                       <div 
-                        style={{ width: typeof window !== 'undefined' && window.innerWidth < 1280 ? '100%' : `${logDetailWidth}px` }}
-                        className="w-full xl:w-auto border-l border-slate-800 bg-[#0F1115] flex flex-col overflow-hidden shrink-0 shadow-2xl relative z-10 animate-in fade-in slide-in-from-right-5 duration-150"
+                        style={{ width: typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : `${logDetailWidth}px` }}
+                        className="w-full lg:w-auto border-l border-slate-800 bg-[#0F1115] flex flex-col overflow-hidden shrink-0 shadow-2xl relative z-10 animate-in fade-in slide-in-from-right-5 duration-150"
                       >
                         {/* Desktop Drag Handle */}
                         <div 
                           onMouseDown={() => setIsDraggingLogDetail(true)}
-                          className="hidden xl:flex absolute left-0 top-0 bottom-0 w-1.5 bg-[#12161E] hover:bg-emerald-500 cursor-col-resize items-center justify-center transition-all z-20 group"
+                          className="hidden lg:flex absolute left-0 top-0 bottom-0 w-1.5 bg-[#12161E] hover:bg-emerald-500 cursor-col-resize items-center justify-center transition-all z-20 group"
                           title="Drag to resize Log Detail panel"
                         >
                           <div className="w-[2px] h-14 bg-slate-700 group-hover:bg-emerald-300 rounded" />
                         </div>
 
-                        <div className="p-4 bg-black flex items-center justify-between border-b border-slate-800 pl-6 xl:pl-8">
+                        <div className="p-4 bg-black flex items-center justify-between border-b border-slate-800 pl-6 lg:pl-8">
                           <div className="flex items-center gap-2">
                              <span className="text-xs font-mono font-black px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">LOG DETAIL</span>
 
@@ -2007,6 +2009,40 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
                           <div className="space-y-2 flex-grow">
                             <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5 select-none">
+                           {selectedResult.status === 429 && (
+                             <div className="bg-rose-950/20 p-4 rounded-lg border border-rose-500/30 space-y-3.5 select-text mb-4">
+                               <div className="text-[10px] font-black text-rose-450 uppercase tracking-widest flex items-center gap-1.5 font-mono">
+                                 <ShieldAlert size={14} className="text-rose-400" /> API THROTTLING DETECTION (HTTP 429)
+                               </div>
+                               <div className="text-[10.5px] text-slate-350 leading-relaxed space-y-2 font-sans select-text">
+                                 <p>
+                                   The target server responded with <span className="text-white font-bold select-all font-mono">Too Many Requests (429)</span>. Even though client proxy headers are randomized dynamically, the server has rejected the test requests.
+                                 </p>
+                                 <p className="font-bold text-rose-300">
+                                   Why is this happening in NestJS / Express?
+                                 </p>
+                                 <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[10px]">
+                                   <li>
+                                     <strong className="text-slate-200">Disabled 'trust proxy':</strong> By default, Express/Fastify NestJS bootstrap models completely ignore <span className="text-slate-300 font-mono">X-Forwarded-For</span> headers unless proxy-trusting is explicitly enabled. The throttler then falls back to our physical container IP.
+                                   </li>
+                                   <li>
+                                     <strong className="text-slate-200">Upstream CDN Restrictions:</strong> Edge reverse proxies (e.g., Cloudflare, AWS CloudFront) filter out or overwrite incoming client-spoofing headers for safety before reaching your app.
+                                   </li>
+                                 </ul>
+                                 <div className="bg-black/60 p-2.5 rounded border border-rose-500/15 text-[9.5px] font-mono text-amber-350 space-y-1.5 leading-snug">
+                                   <div className="text-slate-500 font-bold select-none">// NestJS (Express) Rate Limitation Fix:</div>
+                                   <div>
+                                     app.getHttpAdapter().getInstance().set(&apos;trust proxy&apos;, true);
+                                   </div>
+                                   <div className="text-slate-500 font-bold select-none mt-2">// NestJS (Fastify) Rate Limitation Fix:</div>
+                                   <div>
+                                     {"const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }));"}
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+
                               <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block">Response</span>
                               <div className="flex gap-1 bg-black/60 p-0.5 rounded border border-slate-800/80">
                                 <button

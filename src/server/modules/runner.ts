@@ -12,6 +12,7 @@ export interface BatchConfig {
   fuzzing?: boolean;
   retries?: number;
   regions?: string[];
+  rotateIps?: boolean;
 }
 
 function getRandomRegionIp(region: string) {
@@ -50,6 +51,11 @@ function getRandomRegionIp(region: string) {
   const list = data[region] || data.us;
   const base = list[Math.floor(Math.random() * list.length)];
   const octets = base.ip.split('.');
+  
+  // High fidelity subnet / CIDR rotation: randomize both 3rd and 4th octet safely
+  const baseVal2 = parseInt(octets[2], 10);
+  const randomThird = Math.max(1, Math.min(254, baseVal2 + Math.floor(Math.random() * 23) - 11));
+  octets[2] = randomThird.toString();
   octets[3] = Math.floor(Math.random() * 254 + 1).toString();
   const realisticIp = octets.join('.');
   return {
@@ -74,7 +80,7 @@ export class RequestRunner {
     onProgress?: (update: ProgressUpdate) => void,
     signal?: AbortSignal
   ): Promise<CurlResult[]> {
-    const { request, requests, concurrency, iterations, delayMs = 0, testModule, jitter, fuzzing, retries = 0, regions } = config;
+    const { request, requests, concurrency, iterations, delayMs = 0, testModule, jitter, fuzzing, retries = 0, regions, rotateIps } = config;
     
     // If requests array is provided, iterations matches its length
     const total = requests ? requests.length : iterations;
@@ -102,7 +108,7 @@ export class RequestRunner {
           let simulatedFlag: string | undefined;
           let simulatedRegion: string | undefined;
 
-          if (testModule === 'distributed') {
+          if (testModule === 'distributed' || rotateIps) {
             const chosenRegions = regions && regions.length > 0 ? regions : ['us', 'eu', 'apac', 'latam'];
             const region = chosenRegions[Math.floor(Math.random() * chosenRegions.length)];
             const info = getRandomRegionIp(region);
@@ -111,14 +117,53 @@ export class RequestRunner {
             simulatedFlag = info.flag;
             simulatedRegion = info.regionName;
 
+            // Detect target protocol
+            const isHttps = finalRequest.url.toLowerCase().startsWith('https');
+            const proto = isHttps ? 'https' : 'http';
+            const port = isHttps ? '443' : '80';
+
+            // Extract Host from context URL
+            let hostHeader = '';
+            try {
+              const urlParsed = new URL(finalRequest.url);
+              hostHeader = urlParsed.host;
+            } catch (err) {}
+
             const headers = { 
               ...finalRequest.headers,
+              // Standard Proxy IP routing headers (Title Case and lowercase variations)
               'X-Forwarded-For': simulatedIp,
+              'x-forwarded-for': simulatedIp,
               'X-Real-IP': simulatedIp,
+              'x-real-ip': simulatedIp,
               'CF-Connecting-IP': simulatedIp,
+              'cf-connecting-ip': simulatedIp,
               'True-Client-IP': simulatedIp,
-              'Client-IP': simulatedIp
+              'true-client-ip': simulatedIp,
+              'Client-IP': simulatedIp,
+              'client-ip': simulatedIp,
+              'X-Client-IP': simulatedIp,
+              'x-client-ip': simulatedIp,
+              'X-Originating-IP': simulatedIp,
+              'x-originating-ip': simulatedIp,
+              'X-Cluster-Client-IP': simulatedIp,
+              'x-cluster-client-ip': simulatedIp,
+
+              // RFC 7239 Standard Forwarded header
+              'Forwarded': `for=${simulatedIp};proto=${proto}`,
+              'forwarded': `for=${simulatedIp};proto=${proto}`,
+
+              // Additional proxy context metrics
+              'X-Forwarded-Proto': proto,
+              'x-forwarded-proto': proto,
+              'X-Forwarded-Port': port,
+              'x-forwarded-port': port
             };
+
+            if (hostHeader) {
+              headers['X-Forwarded-Host'] = hostHeader;
+              headers['x-forwarded-host'] = hostHeader;
+            }
             
             const userAgents = [
               "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -130,15 +175,17 @@ export class RequestRunner {
             headers['User-Agent'] = userAgents[Math.floor(Math.random() * userAgents.length)];
             finalRequest.headers = headers;
 
-            // Introduce regional routing roundtrip delays
-            let baseLatency = 0;
-            if (region === 'us') baseLatency = Math.random() * 40 + 10;
-            else if (region === 'eu') baseLatency = Math.random() * 80 + 70;
-            else if (region === 'apac') baseLatency = Math.random() * 120 + 150;
-            else if (region === 'latam') baseLatency = Math.random() * 100 + 120;
-            
-            if (baseLatency > 0) {
-              await new Promise(r => setTimeout(r, baseLatency));
+            // Introduce regional routing roundtrip delays only for the explicit distributed lab test
+            if (testModule === 'distributed') {
+              let baseLatency = 0;
+              if (region === 'us') baseLatency = Math.random() * 40 + 10;
+              else if (region === 'eu') baseLatency = Math.random() * 80 + 70;
+              else if (region === 'apac') baseLatency = Math.random() * 120 + 150;
+              else if (region === 'latam') baseLatency = Math.random() * 100 + 120;
+              
+              if (baseLatency > 0) {
+                await new Promise(r => setTimeout(r, baseLatency));
+              }
             }
           }
 
@@ -349,7 +396,7 @@ export class RequestRunner {
 
         result = await executeWithRetry();
         result.iterationIndex = index;
-        if (testModule === 'distributed') {
+        if (testModule === 'distributed' || rotateIps) {
           result.simulatedIp = simulatedIp;
           result.simulatedCountry = simulatedCountry;
           result.simulatedFlag = simulatedFlag;

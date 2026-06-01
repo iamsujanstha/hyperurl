@@ -528,16 +528,25 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
     
     if (tab.config.method === 'GRAPHQL') {
       let vars = {};
+      let rawVars = resolveVars(tab.graphqlVariables || '').trim();
+      
+      // Auto-heal if the user pasted/loaded a GraphQL query into variables by mistake.
+      // We exclude checking for '{' (which was causing valid JSON blocks to be cleared).
+      if (rawVars && /^\s*(query|mutation|subscription|fragment)\b/i.test(rawVars)) {
+        console.warn('Detected GraphQL query/syntax in variables field. Ignoring invalid variables JSON.');
+        rawVars = '';
+      }
+
       try {
-        if (tab.graphqlVariables) {
-          vars = JSON.parse(resolveVars(tab.graphqlVariables));
+        if (rawVars) {
+          vars = JSON.parse(rawVars);
         }
-      } catch (e) {
-        console.error('Invalid GraphQL variables JSON', e);
+      } catch (e: any) {
+        console.warn('Invalid GraphQL variables JSON:', e?.message || e);
       }
       
       body = JSON.stringify({
-        query: tab.graphqlQuery || '',
+        query: resolveVars(tab.graphqlQuery || ''),
         variables: vars
       });
     }
@@ -773,7 +782,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         retries: settings.retries,
         jitter: moduleId === 'chaos',
         fuzzing: moduleId === 'fuzzer',
-        regions: settings.regions
+        regions: settings.regions,
+        rotateIps: settings.rotateIps
       }
     }));
   };
@@ -1635,8 +1645,22 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
 }
 
 // Keep original sub-components below with minor tweaks for tabs if needed...// Sub-components
-function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; val: any; isLast?: boolean; key?: any }) {
-  const [collapsed, setCollapsed] = useState(label !== undefined);
+function JsonInteractiveNode({ 
+  label, 
+  val, 
+  isLast = true,
+  defaultCollapsed = true
+}: { 
+  label?: string; 
+  val: any; 
+  isLast?: boolean; 
+  key?: any;
+  defaultCollapsed?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (!defaultCollapsed) return false;
+    return label !== undefined;
+  });
 
   if (val === null) {
     return (
@@ -1712,7 +1736,7 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
           {label && <span className="text-slate-500 mr-1">:</span>}
           {collapsed ? (
             <span className="text-slate-400">
-              {"[...]"} <span className="text-slate-505 text-[10px] italic font-sans pl-1">{itemsText}</span>
+              {"[...]"} <span className="text-slate-550 text-[10px] italic font-sans pl-1">{itemsText}</span>
             </span>
           ) : (
             <span className="text-slate-300">
@@ -1723,7 +1747,7 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
         {!collapsed && (
           <div className="border-l border-slate-880/45 ml-1 pl-3 transition-all space-y-0.5">
             {val.map((item, idx) => (
-              <JsonInteractiveNode key={idx} val={item} isLast={idx === itemsCount - 1} />
+              <JsonInteractiveNode key={idx} val={item} isLast={idx === itemsCount - 1} defaultCollapsed={defaultCollapsed} />
             ))}
           </div>
         )}
@@ -1770,14 +1794,14 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
             </span>
           ) : (
             <span className="text-slate-300">
-              {"{"} <span className="text-slate-505 text-[10px] italic font-sans pl-1">{itemsText}</span>
+              {"{"} <span className="text-slate-550 text-[10px] italic font-sans pl-1">{itemsText}</span>
             </span>
           )}
         </div>
         {!collapsed && (
           <div className="border-l border-slate-880/45 ml-1 pl-3 transition-all space-y-0.5">
             {keys.map((k, idx) => (
-              <JsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === itemsCount - 1} />
+              <JsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === itemsCount - 1} defaultCollapsed={defaultCollapsed} />
             ))}
           </div>
         )}
@@ -1802,8 +1826,26 @@ function JsonInteractiveNode({ label, val, isLast = true }: { label?: string; va
 }
 
 // Keep original sub-components below with minor tweaks for tabs if needed...// Sub-components
-function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: CurlResult | null, loading: boolean, onAbort: () => void, theme?: 'dark' | 'light' }) {
-  const [activeResTab, setActiveResTab] = useState<'response' | 'preview' | 'headers' | 'raw' | 'result'>('response');
+function ResponseViewer({ 
+  result, 
+  loading, 
+  onAbort, 
+  theme = 'dark',
+  defaultTab = 'response'
+}: { 
+  result: CurlResult | null, 
+  loading: boolean, 
+  onAbort: () => void, 
+  theme?: 'dark' | 'light',
+  defaultTab?: 'response' | 'preview' | 'headers' | 'log'
+}) {
+  const [activeResTab, setActiveResTab] = useState<'response' | 'preview' | 'headers'>(
+    defaultTab === 'log' ? 'headers' : (defaultTab as any || 'response')
+  );
+
+  useEffect(() => {
+    setActiveResTab(defaultTab === 'log' ? 'headers' : (defaultTab as any || 'response'));
+  }, [defaultTab, result?.id]);
 
   if (loading) {
     return (
@@ -1860,8 +1902,10 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-black">
-      <div className="flex items-center justify-between p-2 px-4 border-b border-slate-900 bg-[#0F1115] shrink-0">
-         <div className="flex items-center gap-6">
+      <div className="flex flex-col border-b border-slate-900 bg-[#0F1115] shrink-0">
+        {/* Top Section: Metrics and HTTP status show */}
+        <div className="p-3 px-4 border-b border-slate-950 flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-5 sm:gap-6">
             <div className="flex flex-col">
                <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">HTTP_STATUS</span>
                <span className={cn("text-[14px] font-black tracking-tight flex items-center gap-1.5", theme === 'light' ? "text-black" : "text-white")}>
@@ -1889,46 +1933,43 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
                  {formattedSize}
                </span>
             </div>
-         </div>
-         
-         <div className="flex items-center gap-2">
-           <div className="flex gap-1 bg-black/40 p-1 rounded border border-slate-800">
-             {(['response', 'preview', 'headers', 'raw', 'result'] as const).map(tab => (
-               <button 
-                 key={tab}
-                 onClick={() => setActiveResTab(tab)}
-                 className={cn(
-                   "text-[9px] px-2.5 py-1 rounded-[1px] font-black transition-all uppercase tracking-widest cursor-pointer select-none", 
-                   activeResTab === tab ? "bg-slate-800 text-white" : "text-slate-600 hover:text-slate-400"
-                 )}
-               >
-                 {tab === 'response' ? 'RESPONSE' : tab}
-               </button>
-             ))}
-           </div>
+          </div>
+            {/* Bottom Section: Tabs bar and actions */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-2 px-4 bg-black/40">
+          <div className="flex flex-wrap gap-1 bg-black/60 p-1 rounded border border-slate-800/80 overflow-x-auto">
+            {(['response', 'preview', 'headers'] as const).map(tab => (
+              <button 
+                key={tab}
+                onClick={() => setActiveResTab(tab)}
+                className={cn(
+                  "text-[9px] px-2.5 py-1 rounded-[1px] font-black transition-all uppercase tracking-widest cursor-pointer select-none", 
+                  activeResTab === tab ? "bg-slate-800 text-white" : "text-slate-600 hover:text-slate-400"
+                )}
+              >
+                {tab === 'response' ? 'BODY' : tab === 'preview' ? 'PREVIEW' : 'HEADERS'}
+              </button>
+            ))}
+          </div>
 
-           {/* QA Quick Copy Helper */}
-           <button
-             onClick={() => {
-               let text = '';
-               if (activeResTab === 'response' || activeResTab === 'preview') {
-                 text = result.body || '';
-               } else if (activeResTab === 'headers') {
-                 text = Object.entries(result.headers).map(([k, v]) => `${k}: ${v}`).join('\n');
-               } else if (activeResTab === 'raw') {
-                 text = result.rawOutput || '';
-               } else if (activeResTab === 'result') {
-                 text = JSON.stringify(result, null, 2);
-               }
-               navigator.clipboard.writeText(text);
-             }}
-             className="p-1 px-3 bg-[#0B0D11] border border-slate-800 text-[9px] text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 rounded flex items-center gap-1.5 transition-all font-mono font-bold cursor-pointer"
-             title="Copy active tab content to clipboard"
-           >
-             <Copy size={10} />
-             <span>COPY</span>
-           </button>
-         </div>
+          {/* QA Quick Copy Helper */}
+          <button
+            onClick={() => {
+              let text = '';
+              if (activeResTab === 'response' || activeResTab === 'preview') {
+                text = result.body || '';
+              } else if (activeResTab === 'headers') {
+                text = Object.entries(result.headers).map(([k, v]) => `${k}: ${v}`).join('\n');
+              }
+              navigator.clipboard.writeText(text);
+            }}
+            className="p-1 px-3 bg-[#0B0D11]/90 border border-slate-800/80 text-[9px] text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 rounded flex items-center gap-1.5 transition-all font-mono font-bold cursor-pointer"
+            title="Copy active tab content to clipboard"
+          >
+            <Copy size={10} />
+            <span>COPY</span>
+          </button>
+        </div>
+      </div>
       </div>
 
       <div className="flex-1 overflow-auto p-6 font-mono text-xs leading-relaxed custom-scrollbar selection:bg-emerald-500/20 text-emerald-500/90">
@@ -2028,7 +2069,11 @@ function ResponseViewer({ result, loading, onAbort, theme = 'dark' }: { result: 
                const bodyStr = (result.body || '').trim();
                try {
                  const json = JSON.parse(bodyStr);
-                 return <JsonPretty data={json} />;
+                 return (
+                   <div className="bg-slate-950/40 border border-slate-900 p-4 rounded-lg">
+                     <JsonInteractiveNode val={json} isLast={true} defaultCollapsed={false} />
+                   </div>
+                 );
                } catch {
                  // Check if it looks like HTML
                  if (bodyStr.startsWith('<!DOCTYPE') || bodyStr.startsWith('<html') || bodyStr.startsWith('<div')) {
@@ -2154,215 +2199,269 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
     }));
   }, [results]);
 
-  if (selectedResult) {
-    return (
-      <div className="flex flex-col h-full bg-black relative">
-        <div className="p-3 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-             <button 
-               onClick={() => setSelectedResult(null)}
-               className="text-[9px] font-mono text-emerald-500 hover:text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1.5"
-             >
-               <Layers size={12} /> BACK_TO_STREAM
-             </button>
-             <span className="w-px h-3 bg-slate-800 mx-1"></span>
-             <span className="text-[10px] font-mono text-slate-500 uppercase">RESULT_DETAIL_VIEW</span>
-          </div>
-          <button 
-            onClick={() => setSelectedResult(null)}
-            className="text-slate-500 hover:text-white"
-          >
-            <X size={14} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <ResponseViewer result={selectedResult} loading={false} onAbort={() => {}} theme={theme} />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full bg-black text-slate-300">
-      <div className="p-6 border-b border-slate-900 bg-[#0F1115] shrink-0 space-y-6">
-        <div className="flex items-center justify-between">
-           <div className="flex items-center gap-3">
-             <div className="p-1.5 bg-amber-500/10 rounded border border-amber-500/20">
-               <Layers size={16} className="text-amber-500" />
-             </div>
-             <div>
-               <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] leading-none">STREAM_ORCHESTRATOR</h3>
-               <p className="text-[8px] text-slate-500 font-mono mt-1 uppercase tracking-widest">Multi-Threaded_Execution_Telemetry</p>
-             </div>
-           </div>
-           {progress && (
-             <div className="flex items-center gap-3">
-               <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded">
-                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></div>
-                 <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">RUNNING</span>
+    <div className="flex flex-col lg:flex-row h-full bg-black text-slate-300 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/60 overflow-hidden">
+      {/* Panel 1: STREAM_ORCHESTRATOR & Telemetry Logs */}
+      <div className={cn("flex flex-col h-full bg-black overflow-hidden transition-all duration-300", selectedResult ? "w-full lg:w-[48%]" : "w-full")}>
+        {/* Banner above STREAM_ORCHESTRATOR with Last Transmission details */}
+        {results.length > 0 && (() => {
+          const lastRes = results[results.length - 1];
+          const isSuccess = lastRes.status >= 200 && lastRes.status < 300;
+          const bodyLength = lastRes.body ? lastRes.body.length : 0;
+          const formattedSize = bodyLength > 1024 
+            ? `${(bodyLength / 1024).toFixed(1)} KB` 
+            : `${bodyLength} B`;
+          const reqLength = lastRes.requestSize !== undefined ? lastRes.requestSize : 0;
+          const formattedReqSize = reqLength > 1024
+            ? `${(reqLength / 1024).toFixed(1)} KB`
+            : `${reqLength} B`;
+
+          return (
+            <div className="px-5 py-2 px-6 bg-emerald-500/5 border-b border-slate-900 flex flex-wrap items-center justify-between gap-4 font-mono text-[9px] shrink-0">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-extrabold tracking-wider">HTTP_STATUS</span>
+                  <span className={cn("font-bold flex items-center gap-1 px-1 py-0.5 rounded text-[10px]", isSuccess ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15" : "bg-rose-500/10 text-rose-400 border border-rose-500/15")}>
+                    {lastRes.status} {isSuccess ? 'OK' : 'ERR'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-extrabold tracking-wider">RESPONSE_TIME</span>
+                  <span className="text-blue-400 font-bold text-[10px]">{lastRes.responseTime}ms</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-extrabold tracking-wider">REQ_SIZE</span>
+                  <span className="text-slate-300 font-bold text-[10px]">{formattedReqSize}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-extrabold tracking-wider">DATA_SIZE</span>
+                  <span className="text-slate-300 font-bold text-[10px]">{formattedSize}</span>
+                </div>
+              </div>
+              <div className="text-[7.5px] text-slate-600 font-black uppercase tracking-[0.2em] hidden sm:block">
+                LAST_TRANSMISSION
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Header of STREAM_ORCHESTRATOR */}
+        <div className="p-5 p-6 border-b border-slate-900 bg-[#0F1115] shrink-0 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-amber-500/10 rounded border border-amber-500/20">
+                <Layers size={14} className="text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] leading-none">STREAM_ORCHESTRATOR</h3>
+                <p className="text-[8px] text-slate-500 font-mono mt-1 uppercase tracking-widest">Multi-Threaded_Execution_Telemetry</p>
+              </div>
+            </div>
+            {progress && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></div>
+                  <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">RUNNING</span>
+                </div>
+                <button 
+                  onClick={onAbort}
+                  className="text-[9px] font-black text-slate-400 border border-slate-800 px-3 py-1 rounded hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all uppercase tracking-widest cursor-pointer"
+                >
+                  SIGINT
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between items-end">
+              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                PROGRESS <span className="text-white ml-2 font-mono">{progress ? progress.completed : results.length} / {progress ? progress.total : results.length}</span>
+              </div>
+              <div className="text-[11px] font-black text-emerald-500 font-mono">
+                {progress && progress.total > 0 ? ((progress.completed / progress.total) * 100).toFixed(1) : (results.length > 0 ? '100.0' : '0.0')}%
+              </div>
+            </div>
+            <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+              <motion.div 
+                 className="h-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                 initial={{ width: 0 }}
+                 animate={{ width: `${progress && progress.total > 0 ? (progress.completed / progress.total) * 100 : (results.length > 0 ? 100 : 0)}%` }}
+                 transition={{ type: 'spring', damping: 20, stiffness: 40 }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-4">
+             {[
+               { label: 'PASSED', val: successCount, color: 'text-emerald-500' },
+               { label: 'FAILED', val: failureCount, color: 'text-rose-500' },
+               { label: 'AVG_LAT', val: `${avgResponseTimeStr}ms`, color: 'text-blue-400' },
+               { label: 'THREAD', val: progress ? concurrency : '-', color: 'text-amber-500' }
+             ].map(stat => (
+               <div key={stat.label} className="space-y-1">
+                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">{stat.label}</div>
+                 <div className={cn("text-base font-black font-mono leading-none", stat.color)}>{stat.val}</div>
                </div>
-               <button 
-                 onClick={onAbort}
-                 className="text-[9px] font-black text-slate-400 border border-slate-800 px-3 py-1 rounded hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all uppercase tracking-widest"
-               >
-                 SIGINT
-               </button>
-             </div>
-           )}
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between items-end">
-            <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-              PROGRESS <span className="text-white ml-2 font-mono">{progress ? progress.completed : results.length} / {progress ? progress.total : results.length}</span>
-            </div>
-            <div className="text-[11px] font-black text-emerald-500 font-mono">
-              {progress && progress.total > 0 ? ((progress.completed / progress.total) * 100).toFixed(1) : (results.length > 0 ? '100.0' : '0.0')}%
-            </div>
+             ))}
           </div>
-          <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-            <motion.div 
-               className="h-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
-               initial={{ width: 0 }}
-               animate={{ width: `${progress && progress.total > 0 ? (progress.completed / progress.total) * 100 : (results.length > 0 ? 100 : 0)}%` }}
-               transition={{ type: 'spring', damping: 20, stiffness: 40 }}
-            />
+
+          {/* Real-time Latency Chart */}
+          <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-900 space-y-2">
+            <div className="flex justify-between items-center text-[7px] font-black text-slate-500 uppercase tracking-[0.2em]">
+              <span>LATENCY_FLUCTUATIONS (LAST 40 CALLS)</span>
+              {results.length > 0 && <span className="text-blue-400 font-mono text-[8px]">{results[results.length - 1]?.responseTime}ms</span>}
+            </div>
+            <div className="h-16 w-full">
+              {results.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={recentResults} margin={{ top: 2, right: 5, left: -25, bottom: 2 }}>
+                    <XAxis dataKey="name" hide />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#475569', fontSize: 8, fontFamily: 'monospace' }} 
+                      domain={['auto', 'auto']}
+                    />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-[#090D14]/95 border border-slate-800 p-2 text-[9px] font-mono rounded shadow-lg text-slate-300">
+                              <div className="text-slate-500 font-bold mb-1">{data.name}</div>
+                              <div className="flex gap-2">
+                                <span>LATENCY:</span>
+                                <span className="text-blue-400 font-bold">{data.latency}ms</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span>STATUS:</span>
+                                <span className={data.success ? "text-emerald-500" : "text-rose-500 font-bold"}>
+                                  {data.status}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="latency" 
+                      stroke="#10b981" 
+                      strokeWidth={1.5} 
+                      dot={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        if (!payload.success) {
+                          return (
+                            <circle key={props.key} cx={cx} cy={cy} r={2.5} fill="#f43f5e" stroke="none" />
+                          );
+                        }
+                        return null;
+                      }}
+                      activeDot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center border border-dashed border-slate-900 rounded bg-[#090D14]/20">
+                  <span className="text-[7.5px] font-mono text-slate-600 uppercase tracking-widest">Awaiting transmissions</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
-           {[
-             { label: 'PASSED', val: successCount, color: 'text-emerald-500' },
-             { label: 'FAILED', val: failureCount, color: 'text-rose-500' },
-             { label: 'AVG_LAT', val: `${avgResponseTimeStr}ms`, color: 'text-blue-400' },
-             { label: 'THREAD', val: progress ? concurrency : '-', color: 'text-amber-500' }
-           ].map(stat => (
-             <div key={stat.label} className="space-y-1">
-               <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">{stat.label}</div>
-               <div className={cn("text-base font-black font-mono leading-none", stat.color)}>{stat.val}</div>
-             </div>
-           ))}
-        </div>
-
-        {/* Real-time Latency Fluctuation Line Chart */}
-        <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-900 space-y-2">
-          <div className="flex justify-between items-center text-[7px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <span>LATENCY_FLUCTUATIONS (LAST 40 CALLS)</span>
-            {results.length > 0 && <span className="text-blue-400 font-mono text-[8px]">{results[results.length - 1]?.responseTime}ms</span>}
+        {/* Telemetry Logs List */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="px-6 py-2 border-b border-slate-900 bg-black/40 flex items-center justify-between shrink-0">
+             <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">TELEMETRY_LOGS</span>
+             <div className="text-[8px] font-mono text-slate-700 tracking-tighter uppercase">SESSION_RETAIN: 50</div>
           </div>
-          <div className="h-20 w-full">
-            {results.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={recentResults} margin={{ top: 2, right: 5, left: -25, bottom: 2 }}>
-                  <XAxis dataKey="name" hide />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#475569', fontSize: 8, fontFamily: 'monospace' }} 
-                    domain={['auto', 'auto']}
-                  />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-[#090D14]/95 border border-slate-800 p-2 text-[9px] font-mono rounded shadow-lg text-slate-300">
-                            <div className="text-slate-500 font-bold mb-1">{data.name}</div>
-                            <div className="flex gap-2">
-                              <span>LATENCY:</span>
-                              <span className="text-blue-400 font-bold">{data.latency}ms</span>
-                            </div>
-                            <div className="flex gap-2">
-                              <span>STATUS:</span>
-                              <span className={data.success ? "text-emerald-500" : "text-rose-500 font-bold"}>
-                                {data.status}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="latency" 
-                    stroke="#10b981" 
-                    strokeWidth={1.5} 
-                    dot={(props: any) => {
-                      const { cx, cy, payload } = props;
-                      if (!payload.success) {
-                        return (
-                          <circle key={props.key} cx={cx} cy={cy} r={2.5} fill="#f43f5e" stroke="none" />
-                        );
-                      }
-                      return null;
-                    }}
-                    activeDot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center border border-dashed border-slate-900 rounded bg-[#090D14]/20">
-                <span className="text-[7.5px] font-mono text-slate-600 uppercase tracking-widest">Awaiting transmissions</span>
+          <div className="flex-1 overflow-y-auto p-4 px-6 custom-scrollbar space-y-1 bg-black">
+            <AnimatePresence initial={false}>
+              {[...results].slice(-50).reverse().map((res, i) => {
+                const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : results.length - i;
+                const rt = res.responseTime;
+                const tag = rt < 150 
+                  ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
+                  : rt < 450 
+                    ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
+                    : rt < 1000 
+                      ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-405 border border-amber-500/20' }
+                      : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-400 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
+                const isSelected = selectedResult?.id === res.id;
+                return (
+                  <motion.div 
+                    key={res.id}
+                    initial={{ x: -10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    onClick={() => setSelectedResult(res)}
+                    className={cn(
+                      "group flex border-l-[2px] py-1.5 pl-4 transition-all cursor-pointer items-center min-h-[32px] gap-2 rounded-r",
+                      isSelected 
+                        ? "border-emerald-500 bg-emerald-500/5" 
+                        : "border-slate-800 hover:border-white hover:bg-white/5"
+                    )}
+                  >
+                    <span className="text-slate-500 text-[10px] font-bold w-10 shrink-0">#{currentIdx}</span>
+                    <span className="text-slate-350 w-16 shrink-0 font-mono text-[9px] font-black">➔ {rt}ms</span>
+                    <span className={cn("w-14 font-black text-[10px]", res.status < 300 ? "text-emerald-500" : "text-rose-500")}>
+                      [{res.status}]
+                    </span>
+                    <span className="text-slate-500 flex-1 truncate uppercase tracking-tighter font-mono group-hover:text-white transition-colors text-[9px]">
+                      REQ::{res.id.split('-').pop()}
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={cn("text-[8px] font-black tracking-wider px-2 py-0.5 rounded uppercase font-mono border", tag.color)}>
+                        {tag.label}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+            {results.length === 0 && !progress && (
+              <div className="h-full flex flex-col items-center justify-center opacity-20 text-center space-y-4">
+                <div className="w-12 h-12 border-2 border-dashed border-slate-700 rounded-full flex items-center justify-center animate-spin-slow">
+                   <Activity size={24} />
+                </div>
+                <div className="uppercase tracking-[0.4em] font-black text-[10px]">Standby_Stream_Init</div>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="px-6 py-2 border-b border-slate-900 bg-black/40 flex items-center justify-between shrink-0">
-           <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">TELEMETRY_LOGS</span>
-           <div className="text-[8px] font-mono text-slate-700 tracking-tighter uppercase">SESSION_RETAIN: 50</div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 px-6 custom-scrollbar space-y-1 bg-black">
-          <AnimatePresence initial={false}>
-            {[...results].slice(-50).reverse().map((res, i) => {
-              const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : results.length - i;
-              const rt = res.responseTime;
-              const tag = rt < 150 
-                ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
-                : rt < 450 
-                  ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
-                  : rt < 1000 
-                    ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-405 border border-amber-500/20' }
-                    : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-400 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
-              return (
-                <motion.div 
-                  key={res.id}
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  onClick={() => setSelectedResult(res)}
-                  className="group flex border-l-[2px] border-slate-800 hover:border-white py-1.5 pl-4 hover:bg-white/5 transition-all cursor-pointer items-center min-h-[32px] gap-2"
-                >
-                  <span className="text-slate-500 text-[10px] font-bold w-10 shrink-0">#{currentIdx}</span>
-                  <span className="text-slate-350 w-16 shrink-0 font-mono text-[9px] font-black">➔ {rt}ms</span>
-                  <span className={cn("w-14 font-black text-[10px]", res.status < 300 ? "text-emerald-500" : "text-rose-500")}>
-                    [{res.status}]
-                  </span>
-                  <span className="text-slate-500 flex-1 truncate uppercase tracking-tighter font-mono group-hover:text-white transition-colors text-[9px]">
-                    REQ::{res.id.split('-').pop()}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={cn("text-[8px] font-black tracking-wider px-2 py-0.5 rounded uppercase font-mono border", tag.color)}>
-                      {tag.label}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-          {results.length === 0 && !progress && (
-            <div className="h-full flex flex-col items-center justify-center opacity-20 text-center space-y-4">
-              <div className="w-12 h-12 border-2 border-dashed border-slate-700 rounded-full flex items-center justify-center animate-spin-slow">
-                 <Activity size={24} />
-              </div>
-              <div className="uppercase tracking-[0.4em] font-black text-[10px]">Standby_Stream_Init</div>
+      {/* Panel 2: Result details dynamically side-by-side! */}
+      {selectedResult && (
+        <div className="flex-1 flex flex-col h-full bg-black relative">
+          <div className="p-3 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => setSelectedResult(null)}
+                 className="text-[9px] font-mono text-emerald-500 hover:text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-2 cursor-pointer"
+               >
+                 <X size={12} /> CLOSE_DETAIL
+               </button>
+               <span className="w-px h-3 bg-slate-800 mx-1"></span>
+               <span className="text-[10px] font-mono text-slate-500 uppercase">
+                 REQ_DETAIL #{results.findIndex(r => r.id === selectedResult.id) + 1}
+               </span>
             </div>
-          )}
+            <button 
+              onClick={() => setSelectedResult(null)}
+              className="text-slate-500 hover:text-white cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ResponseViewer result={selectedResult} loading={false} onAbort={() => {}} theme={theme} defaultTab="headers" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

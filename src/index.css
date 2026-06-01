@@ -73,6 +73,9 @@
 
 /* Specific background styling overrides: turn dark layouts to bright white or soft gray */
 .theme-light .bg-\[\#0B0D11\],
+.theme-light .bg-\[\#0B0D11\]\/95,
+.theme-light .bg-\[\#0B0D11\]\/90,
+.theme-light .bg-\[\#07090C\],
 .theme-light .bg-black,
 .theme-light .bg-black\/35,
 .theme-light .bg-black\/40,
@@ -94,6 +97,7 @@
 .theme-light .bg-\[\#12161E\],
 .theme-light .bg-\[\#10141C\],
 .theme-light .bg-\[\#141822\],
+.theme-light .bg-\[\#090D14\],
 .theme-light .bg-\[\#090D14\]\/20,
 .theme-light .bg-\[\#090D14\]\/40,
 .theme-light .bg-\[\#090D14\]\/50,
@@ -317,6 +321,16 @@
   background-color: #FFFFFF !important;
   color: #0F172A !important;
   border: 1px solid #CBD5E1 !important;
+}
+
+/* Exempt transparent or border-free controls of the HUD / Method select */
+.theme-light select.bg-transparent,
+.theme-light input.bg-transparent,
+.theme-light select.border-none,
+.theme-light input.border-none {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .theme-light .mono-editor,
