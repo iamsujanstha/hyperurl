@@ -413,6 +413,28 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [view, setView] = useState<'debugger' | 'lab' | 'variables' | 'history'>('debugger');
 
+  const [splitPercent, setSplitPercent] = useState(50);
+  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+
+  useEffect(() => {
+    if (!isDraggingSplit) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const newPercent = (e.clientX / window.innerWidth) * 100;
+      if (newPercent >= 20 && newPercent <= 80) {
+        setSplitPercent(newPercent);
+      }
+    };
+    const handleMouseUp = () => {
+      setIsDraggingSplit(false);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingSplit]);
+
   const [variables, setVariables] = useState<Record<string, string>>(() => {
     try {
       const saved = localStorage.getItem('curl_commander_variables');
@@ -1089,7 +1111,10 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 className="absolute inset-0 flex flex-col lg:flex-row gap-0 overflow-hidden"
               >
                 {/* Active Tab Panel */}
-                <div className="w-full lg:w-1/2 border-r border-slate-800 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar">
+                <div 
+                  style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${splitPercent}%` : '100%' }}
+                  className="w-full lg:w-auto lg:flex-none border-r border-slate-800 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar"
+                >
                   <div className="p-4 border-b border-slate-800 flex flex-col gap-4 shrink-0">
                     {/* REST vs GraphQL High-Level Workspace Switcher */}
                     <div className="flex bg-[#0A0C10] border border-slate-800/80 rounded p-1 w-full">
@@ -1351,7 +1376,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                             value={activeTab.graphqlQuery || ''}
                             onChange={(e) => updateActiveTab({ graphqlQuery: e.target.value })}
                             placeholder="query MyQuery { ... }"
-                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-violet-400/90 outline-none resize-none focus:border-violet-500/45 leading-relaxed shadow-inner"
+                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-violet-400/90 outline-none resize-y focus:border-violet-500/45 leading-relaxed shadow-inner"
                           />
                         </div>
                         <div className="h-48 md:h-[240px] flex flex-col shrink-0 space-y-2">
@@ -1377,7 +1402,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                             value={activeTab.graphqlVariables || ''}
                             onChange={(e) => updateActiveTab({ graphqlVariables: e.target.value })}
                             placeholder='{ "id": 1 }'
-                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-blue-400/95 outline-none resize-none focus:border-blue-500/45 leading-relaxed"
+                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-blue-400/95 outline-none resize-y focus:border-blue-500/45 leading-relaxed"
                           />
                         </div>
                       </section>
@@ -1385,7 +1410,19 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   </div>
                 </div>
 
-                <div className="w-full lg:w-1/2 flex flex-col bg-black overflow-hidden border-t lg:border-t-0 border-slate-850">
+                {/* Vertical split resizer bar */}
+                <div 
+                  onMouseDown={() => setIsDraggingSplit(true)}
+                  className="hidden lg:flex w-1.5 hover:w-1.5 bg-[#12161E] hover:bg-emerald-500 cursor-col-resize items-center justify-center transition-all shrink-0 border-x border-[#1E293B] group z-20"
+                  title="Drag left or right to resize panels"
+                >
+                  <div className="w-[1.5px] h-12 bg-slate-700 group-hover:bg-emerald-300 rounded" />
+                </div>
+
+                <div 
+                  style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${100 - splitPercent}%` : '100%' }}
+                  className="w-full lg:w-auto lg:flex-1 flex flex-col bg-black overflow-hidden border-t lg:border-t-0 border-slate-850"
+                >
                   {activeTab.batchMode ? (
                     <BatchViewer 
                       results={activeTab.batchResults} 

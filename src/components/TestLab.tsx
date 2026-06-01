@@ -162,58 +162,58 @@ const THEORETICAL_FRAMEWORKS: Record<TestModuleId, {
   staffEngineeringDepth: string;
 }> = {
   basic_query: {
-    problem: "Manual curl tests or single checks can easily miss subtle contract violations, malformed header entries, or unexpected payload changes. Out of sync model keys often go unnoticed, causing massive frontend or client parsing failures dynamically.",
-    solution: "Single Request contract probe inspects everything in one shot. It validates HTTP statuses, parses complete JSON structures, maps header-to-value expectations, and isolates API path specifications.",
-    realLifeExample: "A frontend code expects 'items' is returned as an array. The backend updates a serializer changing the key to 'listings'. Lacking automated contract testing, the client application immediately throws exceptions and crashes.",
-    staffEngineeringDepth: "Integrate contract testing using path schemas and standard JSON schema matches. Validating runtime types against static rules decouples API rollouts and ensures clients never crash due to unexpected parsing modifications."
+    problem: "API modules are frequently deployed with silent contract discrepancies. When backend query serializers modify database return formats or key casing (e.g., camelCase to snake_case, or altering nested list object schemas), downstream clients crash immediately upon property reference. Lacking automated, strict schema contract testing, these formatting errors routinely leak into customer-facing staging and production environments.",
+    solution: "SINGLE_REQUEST execution maps precise JSON schemas, isolates specific value schemas, validates strict HTTP response statuses, and checks mandatory response headers. This guarantees complete schema cohesion and allows frontend developers to trust contract updates.",
+    realLifeExample: "A microservice update alters a customer info query's ID property key from 'userId' to 'uid' to align with an optimized index. Without automated API contract specifications, the mobile application fails immediately on launch with a 'TypeError: Cannot read properties of undefined' crash for all active visitors.",
+    staffEngineeringDepth: "Enforce API contract stability using Zod, AJV, or JSON-Schema validation frameworks on client/server boundaries. Isolate changes using clear API versioning patterns (/api/v1 vs /api/v2), and pair with automated build-time OpenAPI docs generation to expose type changes instantly."
   },
   blast: {
-    problem: "When user traffic spikes suddenly (e.g., ticket sales or viral media surges), thousands of concurrent TCP sockets connect simultaneously. If the database connection pool is under-provisioned, or if blockages creep into the event loop, thread starvation sets in. The system spends more CPU cycles switching execution contexts than completing productive work (CPU Thrashing), escalating latencies exponentially until the service timeouts or crashes (504 Gateway Timeouts).",
-    solution: "CONCURRENT_BLAST testing floods the target with high-density parallel requests to identify thread pool bounds and database connection limits. By tracking API throughput (RPS) against scaling concurrency levels, we pinpoint the exact 'saturation inflection point' where throughput plateaus or drops while latencies rise sharply.",
-    realLifeExample: "A ticket vendor opens sales for a stadium show. Within 500ms of open-time, 50,000 requests hit the /checkout endpoint. The database connection pool is configured to a maximum of 20 connections; Postgres immediately queue-blocks connections. Node's event loop waits, Redis queries time out, and the entire API cluster fails under cascade backlog.",
-    staffEngineeringDepth: "To prevent thread starvation, decouple slow databases using event queues, increase database connection pools using multiplexers (e.g., PgBouncer), and integrate active load shedding (e.g., serving fast 503 errors when request queues exceed 200ms) to shelter the system from collapse."
+    problem: "When system traffic surges suddenly (e.g., ticket openings or viral marketing events), thousands of concurrent TCP sockets connect. If database connection sizes or event-loop threads are under-configured, CPU context switching thrashing sets in. Servers consume all physical execution power swapping threads rather than completing actual IO queries, leading to severe latency and rapid gateway timeout collapse (HTTP 504).",
+    solution: "CONCURRENT_BLAST floods target routes with highly parallel requests to check thread pool limits and database connection bottlenecks. Measuring throughput (RPS) against concurrent users isolates the performance saturation boundary of the API cluster.",
+    realLifeExample: "A reservation gateway faces 10,000 requests in a 400ms window during a product release. With a database connection limit of only 15 client slots, Postgres blocks incoming threads. The application server runs out of open database connections, queues overflow, and the entire API cluster crashes.",
+    staffEngineeringDepth: "Mitigate thread pool bottlenecks by scaling DB access with dedicated transaction pools (e.g., PgBouncer), decoupling writes using persistent messaging registers (e.g., RabbitMQ, Kafka), and integrating proactive active load shedding (serving fast HTTP 503 errors when queue waits exceed 150ms)."
   },
   race: {
-    problem: "Non-atomic update logic (Read-Modify-Write) allows 'dirty writes' when overlapping requests read identical state before changes write back. For example, if two payment requests query a $100 balance simultaneously, both see $100 and approve the spend. Both write back a remaining $50, resulting in $100 spent but a $50 final balance.",
-    solution: "RACE_DETECTOR injects tight concurrent payload mutations in a sub-millisecond window targeting the exact same record, trying to force state write collisions and highlighting missing row-level serialization or distributed locks.",
-    realLifeExample: "A flash sale occurs for a limited-stock console. Shoppers hit the 'Buy' trigger at the exact same millisecond. Multiple threads check 'stock_count = 1', validate, and decrement inventory. Both purchases succeed, resulting in double-allocation and overselling.",
-    staffEngineeringDepth: "Mitigate race conditions using Pessimistic Locking (SELECT FOR UPDATE) to lock database rows down during a read, Optimistic Locking (WHERE version = X) to fail operations if the record has moved, or distributed lock managers like Redis Redlock across dynamic cluster nodes."
+    problem: "Non-atomic state manipulation (Read-Modify-Write) allows concurrent commands of multiple threads to read raw values before changes write back. If separate actions (e.g. transfers, ticket bookings, stock decrements) target the exact same asset at the identical millisecond, they modify stale state, causing major double-allocation exploits or balance leaks.",
+    solution: "RACE_DETECTOR submits high-frequency, overlapping write commands targeting a single record. This forces millisecond-level collision windows, revealing whether database records utilize robust row-level transaction isolation rules.",
+    realLifeExample: "An online buyer with $50 balance clicks 'Withdraw $45' twice in the same millisecond. Multiple threads check the balance individually, find $50 is sufficient, and execute two withdrawals, causing a negative bank account balance while distributing $90 in cash.",
+    staffEngineeringDepth: "Guard states against dirty writes by using pessimistic locking (SELECT FOR UPDATE) to lock rows during evaluation, optimistic locking strategies (WHERE version = current_version), or coordinated distributed locks (such as Redlock) via fast RAM storage nodes."
   },
   replay: {
-    problem: "Noisy or malicious clients can intercept and resubmit identical request headers, signatures, or payloads. If transaction mutations lack deduplication checks, they process again, causing duplicate billing, duplicate item creation, or broken state integrity.",
-    solution: "REPLAY_GUARD clones authorization headers, payload structures, and telemetry markers, resending identical signatures sequentially to verify that the backend implements transaction-uniqueness constraints (Idempotency Guards) and safely logs duplicates.",
-    realLifeExample: "An unstable mobile connection causes a user's delivery request to hang. The app automatically retries. The web gateway processes each retry as a brand new command, generating three separate delivery orders and triple-charging the credit card.",
-    staffEngineeringDepth: "Enforce strict idempotency using unique Idempotency-Key headers on all mutative requests (POST/PATCH). Store these transaction keys in Redis with a short TTL (e.g., 24h). If a key state is 'Processing', return a transient lock-wait; if 'Completed', immediately serve the cached response without running downstream controllers."
+    problem: "Unstable mobile networks encounter packet gaps, forcing client retry systems or proxy routes to resubmit identical API payloads. Without strict uniqueness constraints, the API executes these retried requests as brand new commands, resulting in duplicate user registrations, multiple database records, or double credit card transactions.",
+    solution: "REPLAY_GUARD submits identical transaction structures, headers, and payload signatures sequentially. This validates whether backends properly identify identical transactions, block duplicate executions, and serve safe cached results without processing mutations again.",
+    realLifeExample: "A client on a patchy mobile connection clicks 'Authorize Payment'. The request succeeds on the server but the connection drops before the client gets the 200 OK. The device retries three times, and the server charges the customer $300 instead of $100.",
+    staffEngineeringDepth: "Enforce strict Idempotency-Key validation headers at the API gateway level. Store unique transaction tokens in shared Redis memory caches with an expiration of 24 hours. If a token is in 'Processing' state, block; if 'Completed', return the original cached response directly."
   },
   load: {
-    problem: "Longer execution runs surface bugs that quick spikes miss. Gradual degradation (Performance Rot) from memory leaks, file descriptor starvation, index fragmentation, or un-garbage-collected heaps slowly pushes latency baselines up and crashes servers after hours of flawless usage.",
-    solution: "LOAD_CANNON runs extended, continuous request queues to test garbage collection efficiency, heap allocation trends, socket exhaustion under heavy load, and database slow-query regressions.",
-    realLifeExample: "An IoT telemetry engine receives data packets every minute. A tiny memory leak in an incoming string parser retains characters on the V8 heap. The microservice operates perfectly for 6 hours, then silently heaps out and crashes.",
-    staffEngineeringDepth: "Monitor Heap Allocation graphs during sustained load. Add strict timeouts to downstream connections to prevent file descriptor leaks, index critical query predicates, and set up alert limits at 80% RAM utilization to trigger controlled canary rolling restarts."
+    problem: "System issues are routinely masked during rapid spikes but aggregate over hours of sustained traffic. Gradual resource decay (performance rot) from subtle runtime heap leaks, missing database indexes, unclosed OS file descriptors, or socket leaks slowly degrades API latency until the server exhausts space and crashes.",
+    solution: "LOAD_CANNON maintains a continuous, long-running request queue at consistent pressure to evaluate runtime garbage collection, monitor heap allocation graphs, check socket exhaustion, and isolate backend index degradation.",
+    realLifeExample: "An IoT endpoint registers sensor telemetry but fails to free its internal diagnostic scope reference. The microservice operates perfectly for 8 hours under load, but gradually eats 16GB of system memory, starts swapping swap space, and crashes with an out-of-memory exception.",
+    staffEngineeringDepth: "Analyze server processes under sustained load using memory allocation profilers. Implement strict connection socket timeout boundaries to prevent idle devices from starving operating system files, and schedule automated rolling container restarts at 85% memory limits."
   },
   chaos: {
-    problem: "In microservice topologies, external networks, caches, or third-party gateways will eventually fail or run slow. If dependencies act synchronously without protection, a failure in a minor metadata service cascadingly starves threads across the entire ecosystem.",
-    solution: "CHAOS_MODE simulates network packet drops, connection closures, and high latency targets. This assesses whether circuit breakers, graceful degradation states, and timeout policies successfully guard primary customer flows.",
-    realLifeExample: "A shop's main product page tries to load item details, stock count, and personal recommendations. The recommendation service suffers a network timeout. Since the main route calls the service synchronously without key protection, the entire product page hangs and errors out with a 500 error instead of simply hiding recommendations.",
-    staffEngineeringDepth: "Wrap third-party and non-essential queries in resilient Circuit Breakers (such as Cockatiel or Hystrix), configure aggressive 500-1000ms socket timeouts, and return static fallbacks or cached models when downstream services fail."
+    problem: "In distributed microservice graphs, adjacent networks, databases, or third-party APIs will eventually fail or run slow. If parent services block synchronously while waiting for downstream dependencies, a failure in an optional secondary service (such as review banners) starves event-loops worldwide.",
+    solution: "CHAOS_MODE injects random packet jitters, forced connection terminations, and network delays into dependent streams. This checks whether circuit breakers, timeout limits, and secondary fallback models seamlessly protect major system flows.",
+    realLifeExample: "A web platform's checkout page tries to load payment methods, purchase reviews, and promo slides. The slide service fails due to an outage. Because the checkout page queries the slides synchronously without a timeout, the entire checkout page times out and errors out for all users.",
+    staffEngineeringDepth: "Wrap all third-party API dependencies in robust Circuit Breaker patterns (such as Cockatiel or Hystrix). Mandate aggressive connection timeouts (500ms max), and establish safe degrader returns: if a network request fails, return static cached configurations immediately."
   },
   fuzzer: {
-    problem: "API modules parse untrusted payloads assuming structures are correct. Lacking strict schema isolation, unescaped field entries, type casting errors, or unexpected keys can trigger backend interpreter crashes, unhandled database queries, or server crashes.",
-    solution: "PAYLOAD_FUZZER alters payload variables, deletes keys, swaps types, and introduces giant buffers, proving that parser systems reject invalid input formats cleanly without leaking deep runtime traces or crashing the event loop.",
-    realLifeExample: "A search endpoint parses a filters query: {\"price\": 100}. An attacker injects MongoDB operators: {\"price\": {\"$gt\": 0}}. The database runs the query literally, exposing the entire product database rather than raising an invalid query exception.",
-    staffEngineeringDepth: "Integrate schema validation engines (such as Zod, AJV, or Joi) at the controller gateway. Adhere to a 'Parse, Don't Validate' design philosophy: strictly convert incoming payloads into sanitized, strongly typed model objects before forwarding data to internal service modules."
+    problem: "Input validation layers often make assumptions about type patterns and object styles. If unescaped strings, deep nested objects, arbitrary integers, or unexpected data structures bypass sanity filters, they can trigger internal database queries, crashes of the V8 parser, or raw code injection.",
+    solution: "PAYLOAD_FUZZER alters payload configurations by dropping keys, swapping data types, adding nested objects, and injecting giant buffer strings, confirming that controller inputs handle invalid payloads gracefully with clean HTTP 400 errors.",
+    realLifeExample: "An endpoint receives data filters: { 'username': 'sujan' }. A malicious user injects database-specific nested variables: { 'username': { '$ne': '' } }. The direct query returns all customer user records, exposing entire user credentials to an unauthorized attacker.",
+    staffEngineeringDepth: "Govern all payload entrances strictly using isolated schema models (Zod, TypeBox, AJV) via a 'Parse, Don't Validate' architectural paradigm. This ensures all incoming objects are compiled and strongly typed before they migrate down into database handlers."
   },
   security_audit: {
-    problem: "Applications with inputs directly bound to query strings, SQL statements, or HTML renders are prone to injection vectors: SQLi, XSS, Path Traversal, or missing Sandbox headers. Attackers exploit these gaps to steal databases, read root files, or hijack active browser sessions.",
-    solution: "SECURITY_AUDITOR tests fields by injecting malicious patterns (e.g., ' OR 1=1 --, <script>, and traversals) to inspect if error paths reflect raw backends, checking if response headers correctly sanitize client-side contexts.",
-    realLifeExample: "An endpoint loads files via /api/view?file=item.pdf. An attacker accesses /api/view?file=../../../../etc/passwd, bypassing authorization to read the host operating system's user credentials directly.",
-    staffEngineeringDepth: "Maintain defence-in-depth: decouple user parameters using Prepared / Parameterized Queries, purify HTML output using DOMPurify, lock file lookups to strict static folders, and configure strict security headers (CSP, HSTS, XSS-Protection, X-Frame-Options)."
+    problem: "Open client inputs are major targets for SQL Injections (SQLi), Cross-Site Scripting (XSS), Local Directory Traversals, and malicious shell executions. Additionally, missing CORS locks or improperly configured server safety headers leave browser cookies vulnerable to active hijacking.",
+    solution: "SECURITY_AUDITOR executes Automated Vulnerability Sweeps by injecting injection codes, scripting queries, and directory traversal targets into user arguments, ensuring the API restricts access and prevents leakage of raw backends.",
+    realLifeExample: "An API displays customer profile photos via /api/profile?file=user.jpg. A malicious user inputs /api/profile?file=../../../../etc/passwd, bypassing authorization boundaries and extracting Unix user files from the operating system.",
+    staffEngineeringDepth: "Build a solid defense-in-depth layout: implement Prepared / Parameterized Queries across all databases to completely eliminate SQL Injection, disinfect rich text parameters using DOMPurify, lock uploads, and serve strict security headers (CSP, HSTS)."
   },
   distributed: {
-    problem: "Standard single-origin load tests hit endpoints from a single client subnet or physical machine, missing downstream DNS caching, multi-continent Cloudflare routing filters, third-party ISP throttling, or incorrect client IP parsing issues on API load-balancers.",
-    solution: "DISTRIBUTED_LOAD spoofs standard industry CDN headers (X-Forwarded-For, X-Real-IP, Client-IP) and dynamically inserts typical geographical speed parameters, validating how the core network buffers realistic worldwide loads.",
-    realLifeExample: "A global service uses regional rate-limiting or location-based firewalls. A simple QA run completes fine locally, but sudden customer load bursts in Sydney block Japanese endpoints entirely due to missing routing filters.",
-    staffEngineeringDepth: "Implement CDN boundary authentication and strict upstream proxy verification. Configure secure 'trust proxy' patterns inside framework controllers to bypass artificial IP header tampering while safely identifying origin IPs for client diagnostics."
+    problem: "Why do standard single-source load tests trigger false results? Traditional rate-limiting systems (Token Bucket / Sliding Window in Redis) count requests *per individual client IP address*, not the collective endpoint load. When you run stress tests from a single local computer or isolated test runner container, all traffic shares your single container IP. The server identifies this as a single-source threat and restricts it immediately (HTTP 429 Too Many Requests), even if total global server resources are completely idle. In a real-world production incident, however, thousands of separate legitimate visitors hit your systems with unique IP addresses simultaneously. Your local test runner cannot verify if your global rate limit settings are correctly distributed or if they suffer from regional gateway issues.",
+    solution: "DISTRIBUTED_LOAD simulates true worldwide traffic by rotating realistic geolocated client IP headers (such as `X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`, `True-Client-IP`, `Client-IP`) and user agents across workers. By distributing the load across multiple virtual geo-nodes (US, EU, APAC, LATAM), it checks whether your rate limit structures correctly separate multi-user traffic, bypassing artificial single-IP bottlenecks while ensuring regional firewalls, CDNs, and proxies run flawlessly.",
+    realLifeExample: "A global service launches a mobile update. The backend applies a strict single-IP rate limit policy. However, because the API runs behind a multi-tier proxy cluster that is NOT configured with 'trust proxy', the application cluster identifies all inbound traffic as coming from the internal load balancer's single IP. The rate limiter fires instantly, blockading 99% of all global users with 429 Too Many Requests errors and causing a massive site-wide outage.",
+    staffEngineeringDepth: "Configure strict 'trust proxy' configurations inside Express, Koa, or NestJS gateway routers to accurately process client headers while preventing header-spoofing attacks (arbitrary IP manipulation) from untrusted external sources. Always deploy multi-tiered rate limiting: rapid client-level rate limits (e.g., 5 requests/sec per IP) paired with broader, globally coordinated API gateway limits across all nodes. Also use CDN-level regional Edge rules (e.g. Cloudflare WAF Rate Limiting) to isolate heavy load prior to reaching origin servers."
   }
 };
 
@@ -416,6 +416,27 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [selectedRegions, setSelectedRegions] = useState<string[]>(['us', 'eu', 'apac', 'latam']);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'perf' | 'resilience' | 'security'>('all');
   const [showPresets, setShowPresets] = useState(false);
+  const [logDetailWidth, setLogDetailWidth] = useState(560);
+  const [isDraggingLogDetail, setIsDraggingLogDetail] = useState(false);
+
+  useEffect(() => {
+    if (!isDraggingLogDetail) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 380 && newWidth <= 850) {
+        setLogDetailWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => {
+      setIsDraggingLogDetail(false);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingLogDetail]);
 
   const filteredModules = useMemo(() => {
     if (selectedCategory === 'all') return TEST_MODULES;
@@ -1143,18 +1164,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                       );
                     })}
                   </div>
-                </div>
-
-                <div className="p-3.5 bg-indigo-950/15 border border-indigo-500/20 rounded-lg space-y-2 text-[11px] leading-relaxed">
-                  <div className="text-indigo-400 font-bold uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <Info size={12} /> Distributed Rate-Limiting Info
-                  </div>
-                  <p className="text-slate-350 font-sans">
-                    Client rate limits count requests per identified IP. Because load tests hit your target endpoints from a single test container (this server's source IP), basic configurations will trigger single-IP throttling (e.g., 429 Too Many Requests).
-                  </p>
-                  <p className="text-slate-350 font-sans">
-                    <strong>To verify distributed clients:</strong> Ensure your target API trusts standard proxy headers (like <code className="text-indigo-350 bg-black px-1 py-0.5 rounded block whitespace-nowrap overflow-x-auto">X-Forwarded-For</code> or enable <code className="text-indigo-350 bg-black px-1 py-0.5 rounded">trust proxy</code> in Express). The distributed run will rotate realistic worldwide client IPs, bypassing single-IP throttling constraints seamlessly!
-                  </p>
                 </div>
               </div>
             )}
@@ -1928,8 +1937,20 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
                     {/* Side-by-Side inline description details */}
                     {selectedResult && (
-                      <div className="w-full xl:w-[420px] border-l border-slate-800 bg-[#0F1115] flex flex-col overflow-hidden shrink-0 shadow-2xl relative z-10 animate-in fade-in slide-in-from-right-5 duration-150">
-                        <div className="p-4 bg-black flex items-center justify-between border-b border-slate-800">
+                      <div 
+                        style={{ width: typeof window !== 'undefined' && window.innerWidth < 1280 ? '100%' : `${logDetailWidth}px` }}
+                        className="w-full xl:w-auto border-l border-slate-800 bg-[#0F1115] flex flex-col overflow-hidden shrink-0 shadow-2xl relative z-10 animate-in fade-in slide-in-from-right-5 duration-150"
+                      >
+                        {/* Desktop Drag Handle */}
+                        <div 
+                          onMouseDown={() => setIsDraggingLogDetail(true)}
+                          className="hidden xl:flex absolute left-0 top-0 bottom-0 w-1.5 bg-[#12161E] hover:bg-emerald-500 cursor-col-resize items-center justify-center transition-all z-20 group"
+                          title="Drag to resize Log Detail panel"
+                        >
+                          <div className="w-[2px] h-14 bg-slate-700 group-hover:bg-emerald-300 rounded" />
+                        </div>
+
+                        <div className="p-4 bg-black flex items-center justify-between border-b border-slate-800 pl-6 xl:pl-8">
                           <div className="flex items-center gap-2">
                              <span className="text-xs font-mono font-black px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">LOG DETAIL</span>
 
@@ -2306,6 +2327,24 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                               </div>
                             </div>
                           </div>
+
+                          {/* Distributed Rate-Limiting Info Box inside Theoretical Framework */}
+                          {activeModule.id === 'distributed' && (
+                            <div className="p-5 bg-indigo-950/15 border border-indigo-500/20 rounded-xl space-y-3 text-xs leading-relaxed select-text">
+                              <div className="text-indigo-400 font-bold uppercase tracking-wider font-mono flex items-center gap-2">
+                                <Info size={14} className="text-indigo-400 animate-pulse" /> Sandboxed Distributed Throttling Mechanics
+                              </div>
+                              <p className="text-slate-300 font-sans">
+                                Client-level rate limit controllers filter request spikes mapped to individual client IP addresses. Under normal load testing rules, your execution container has only one source IP, triggering local throttling models in milliseconds (e.g. 429 Too Many Requests).
+                              </p>
+                              <p className="text-slate-300 font-sans">
+                                <strong>Multi-client Proxy Header Rotation:</strong> To solve this, the distributed engine dynamically injects realistic geolocated client IPs via proxy headers like <code className="text-indigo-350 bg-black px-1.5 py-0.5 rounded font-mono">X-Forwarded-For</code> and <code className="text-indigo-350 bg-black px-1.5 py-0.5 rounded font-mono">X-Real-IP</code>.
+                              </p>
+                              <p className="text-slate-400 font-sans text-[11px] leading-relaxed italic border-t border-indigo-950/50 pt-2">
+                                *Note: To successfully demonstrate this in your custom APIs, configure a trusted-proxy setup (like <code className="text-slate-300 bg-black px-1 py-0.5 rounded font-mono">app.set('trust proxy', true)</code> in Express) to correctly recognize split IP addresses.
+                              </p>
+                            </div>
+                          )}
 
                        </div>
                     </motion.div>
