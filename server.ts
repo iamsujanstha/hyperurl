@@ -132,6 +132,54 @@ async function startServer() {
     }
   });
 
+  // IP-based Rate Limiter Demo for distributed testing
+  const rateLimitStore = new Map<string, number[]>();
+
+  app.get("/api/demo/rate-limited", (req, res) => {
+    const rawIp = req.headers["x-forwarded-for"] || 
+                  req.headers["x-real-ip"] || 
+                  req.headers["client-ip"] || 
+                  req.ip || 
+                  "127.0.0.1";
+    const clientIp = Array.isArray(rawIp) 
+      ? rawIp[0].trim() 
+      : typeof rawIp === "string" 
+        ? rawIp.split(",")[0].trim() 
+        : "127.0.0.1";
+    
+    const now = Date.now();
+    let timestamps = rateLimitStore.get(clientIp) || [];
+    
+    // Filter timestamps to the last 1 second (1000ms)
+    timestamps = timestamps.filter(t => now - t < 1000);
+    
+    if (timestamps.length >= 3) {
+      timestamps.push(now);
+      rateLimitStore.set(clientIp, timestamps);
+      res.status(429).json({
+        error: "Too Many Requests",
+        message: `Throttle triggered! IP ${clientIp} exceeded limit of 3 requests per second.`,
+        clientIp,
+        rateLimit: "3 req/sec",
+        trustedProxyHeaders: true,
+        help: "Running this under the 'DISTRIBUTED_LOAD' test will rotate simulated IPs and automatically bypass this rate limit!"
+      });
+      return;
+    }
+    
+    timestamps.push(now);
+    rateLimitStore.set(clientIp, timestamps);
+    
+    res.json({
+      success: true,
+      message: "Request allowed.",
+      clientIp,
+      requestsInLastSecond: timestamps.length,
+      limitLeft: Math.max(0, 3 - timestamps.length),
+      trustedProxyHeaders: true
+    });
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });

@@ -899,13 +899,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       <div className="flex-1 flex overflow-hidden">
         {/* PANEL 2: Middle Config & Execution Controls */}
         <div className="w-[420px] bg-[#0F1115] border-r border-[#1E293B] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
-          <div className="p-4 bg-black/50 border-b border-[#1E293B] flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider"></span>
-            <span className={cn("text-[8px] font-mono font-extrabold px-2 py-0.5 rounded border uppercase flex items-center gap-1", activeModule.bgColor, activeModule.color, activeModule.borderColor)}>
-              {activeModule.strategy}
-            </span>
-          </div>
-
           <div className="p-5 space-y-6 flex-grow">
             
             {/* Unified Sleek Test Strategy Selector (Replaced Left Sidebar) */}
@@ -1116,38 +1109,52 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
             )}
 
             {selectedModule === 'distributed' && (
-              <div className="p-4 bg-indigo-950/20 rounded-lg border border-indigo-500/30 space-y-3">
-                <div className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 font-mono">
-                  <Globe size={14} /> Global Simulation Nodes
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { id: 'us', label: '🇺🇸 NORTH AMERICA (US-EAST / US-WEST)' },
-                    { id: 'eu', label: '🇩🇪 EUROPE (FRANKFURT / LONDON / PARIS)' },
-                    { id: 'apac', label: '🇯🇵 ASIA PACIFIC (TOKYO / SINGAPORE / SYDNEY)' },
-                    { id: 'latam', label: '🇧🇷 LATIN AMERICA (SÃO PAULO / MEXICO / BOGOTÁ)' }
-                  ].map(region => {
-                    const isChecked = selectedRegions.includes(region.id);
-                    return (
-                      <label key={region.id} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked} 
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedRegions([...selectedRegions, region.id]);
-                            } else {
-                              if (selectedRegions.length > 1) {
-                                setSelectedRegions(selectedRegions.filter(r => r !== region.id));
+              <div className="space-y-3">
+                <div className="p-4 bg-indigo-950/20 rounded-lg border border-indigo-500/30 space-y-3">
+                  <div className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 font-mono">
+                    <Globe size={14} /> Global Simulation Nodes
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { id: 'us', label: '🇺🇸 NORTH AMERICA (US-EAST / US-WEST)' },
+                      { id: 'eu', label: '🇩🇪 EUROPE (FRANKFURT / LONDON / PARIS)' },
+                      { id: 'apac', label: '🇯🇵 ASIA PACIFIC (TOKYO / SINGAPORE / SYDNEY)' },
+                      { id: 'latam', label: '🇧🇷 LATIN AMERICA (SÃO PAULO / MEXICO / BOGOTÁ)' }
+                    ].map(region => {
+                      const isChecked = selectedRegions.includes(region.id);
+                      return (
+                        <label key={region.id} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
+                          <input 
+                            type="checkbox" 
+                            checked={isChecked} 
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRegions([...selectedRegions, region.id]);
+                              } else {
+                                if (selectedRegions.length > 1) {
+                                  setSelectedRegions(selectedRegions.filter(r => r !== region.id));
+                                }
                               }
-                            }
-                          }}
-                          className="w-4 h-4 accent-indigo-500 bg-black border-slate-700 rounded transition-all" 
-                        />
-                        {region.label}
-                      </label>
-                    );
-                  })}
+                            }}
+                            className="w-4 h-4 accent-indigo-500 bg-black border-slate-700 rounded transition-all" 
+                          />
+                          {region.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-indigo-950/15 border border-indigo-500/20 rounded-lg space-y-2 text-[11px] leading-relaxed">
+                  <div className="text-indigo-400 font-bold uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <Info size={12} /> Distributed Rate-Limiting Info
+                  </div>
+                  <p className="text-slate-350 font-sans">
+                    Client rate limits count requests per identified IP. Because load tests hit your target endpoints from a single test container (this server's source IP), basic configurations will trigger single-IP throttling (e.g., 429 Too Many Requests).
+                  </p>
+                  <p className="text-slate-350 font-sans">
+                    <strong>To verify distributed clients:</strong> Ensure your target API trusts standard proxy headers (like <code className="text-indigo-350 bg-black px-1 py-0.5 rounded block whitespace-nowrap overflow-x-auto">X-Forwarded-For</code> or enable <code className="text-indigo-350 bg-black px-1 py-0.5 rounded">trust proxy</code> in Express). The distributed run will rotate realistic worldwide client IPs, bypassing single-IP throttling constraints seamlessly!
+                  </p>
                 </div>
               </div>
             )}
@@ -1182,6 +1189,31 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                     </p>
                     <div className="grid grid-cols-1 gap-2">
                       {[
+                        {
+                          id: 'PRESET_DISTRIBUTED_RATE_LIMIT',
+                          name: 'Distributed Rate-Limit Sandbox',
+                          desc: 'Checks IP-based limits (throttles to 429 if the same client hits >3 requests/sec).',
+                          icon: <Globe size={12} className="text-indigo-400" />,
+                          setup: () => {
+                            if (onChangeConfig) {
+                              onChangeConfig({
+                                method: 'GET',
+                                url: 'http://localhost:3000/api/demo/rate-limited',
+                                body: '',
+                                headers: {
+                                  ...config.headers,
+                                }
+                              });
+                            }
+                            setConcurrency(5);
+                            setIterationsPerUser(10);
+                            setAssertions([
+                              { id: '1', type: 'STATUS_CODE', value: '200' }
+                            ]);
+                            setSelectedPresetId('PRESET_DISTRIBUTED_RATE_LIMIT');
+                            setSelectedModule('distributed');
+                          }
+                        },
                         {
                           id: 'PRESET_IDEMPOTENCY',
                           name: 'Idempotency Validation',
