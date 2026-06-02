@@ -8,7 +8,7 @@ set -e
 NODE_VERSION="${NODE_VERSION:-22}"                  # Upgraded default to Node 22 (or 20, 18, etc.)
 APP_NAME="${APP_NAME:-my-app}"                      # Your application name
 APP_DIR="/var/www/${APP_NAME}"                      # Target deployment directory
-REPO_SOURCE_DIR="${REPO_SOURCE_DIR:-~/Jerney}"      # Where your code lives temporarily
+REPO_SOURCE_DIR="${REPO_SOURCE_DIR:-/home/ubuntu/client-url}"     # Where your code lives temporarily
 
 # Database Configurations
 DB_NAME="${DB_NAME:-app_db}"
