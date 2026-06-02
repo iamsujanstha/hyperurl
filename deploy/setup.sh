@@ -58,24 +58,20 @@ else
     echo "⚠️ Source directory ${REPO_SOURCE_DIR} not found! Please clone your code manually to ${APP_DIR}."
 fi
 
-# --- 7. MODULAR APP BUILD (Checks if folders exist before running) ---
-if [ -d "${APP_DIR}/backend" ]; then
-    echo "📦 Installing backend dependencies..."
-    cd "${APP_DIR}/backend"
-    npm install --production
-    
-    echo "🚀 Starting backend with PM2..."
-    pm2 start src/index.js --name "${APP_NAME}-backend" || pm2 restart "${APP_NAME}-backend"
-    pm2 save
-    pm2 startup systemd -u $USER --hp /home/$USER | tail -1 | sudo bash
-fi
+# --- 7. MODULAR APP BUILD (Updated for Shared Single-Root Layout) ---
+echo "📦 Installing project dependencies..."
+cd "${APP_DIR}"
+npm install
 
-if [ -d "${APP_DIR}/frontend" ]; then
-    echo "🔨 Building frontend..."
-    cd "${APP_DIR}/frontend"
-    npm install
-    npm run build
-fi
+echo "🔨 Building Frontend Assets & Backend Bundle..."
+# Runs your Vite compilation and outputs files to ${APP_DIR}/dist
+npm run build
+
+echo "🚀 Starting Node Server with PM2..."
+# Launches your TypeScript/Express server.ts background runtime
+pm2 start server.ts --name "${APP_NAME}-backend" --interpreter npx -- interpreter-args ts-node || pm2 restart "${APP_NAME}-backend"
+pm2 save
+pm2 startup systemd -u $USER --hp /home/$USER | tail -1 | sudo bash
 
 # --- 8. NGINX ROUTING ---
 # Assumes you have a generic nginx conf file in your deploy folder
