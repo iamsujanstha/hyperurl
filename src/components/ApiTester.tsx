@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Play, Plus, Minus, Cpu, X, Copy, Trash2, ChevronDown, ChevronUp, Clock, FileJson, List, Gauge, Zap, Terminal, Layers, Folder, Database, Layout, Maximize2, Minimize2, Save, FileText, ChevronLeft, ChevronRight, Beaker, Activity, RefreshCw, AlertTriangle, History, Sliders, Sun, Moon, Info } from 'lucide-react';
+import { Play, Plus, Minus, Cpu, X, Copy, Trash2, ChevronDown, ChevronUp, Clock, FileJson, List, Gauge, Zap, Terminal, Layers, Folder, Database, Layout, Maximize2, Minimize2, Save, FileText, ChevronLeft, ChevronRight, Beaker, Activity, RefreshCw, AlertTriangle, History, Sliders, Sun, Moon, Info, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { cn } from '../lib/utils';
@@ -422,26 +422,6 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
   const [graphqlQueryHeight, setGraphqlQueryHeight] = useState<number>(260);
   const [graphqlVariablesHeight, setGraphqlVariablesHeight] = useState<number>(185);
   const [payloadJsonHeight, setPayloadJsonHeight] = useState<number>(192);
-  const [requestTopHeight, setRequestTopHeight] = useState<number>(220);
-
-  const startResizeRequestTop = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startHeight = requestTopHeight;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaY = moveEvent.clientY - startY;
-      setRequestTopHeight(Math.max(120, Math.min(1000, startHeight + deltaY)));
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
 
   const startResizeQuery = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -1221,8 +1201,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   className="w-full lg:w-auto lg:flex-none border-r border-slate-800 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar"
                 >
                   <div 
-                    style={{ height: `${requestTopHeight}px` }}
-                    className="p-4 border-b border-slate-800 flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar relative"
+                    className="p-4 border-b border-slate-800 flex flex-col gap-4 shrink-0 relative bg-[#090C11]/50"
                   >
                     {/* REST vs GraphQL High-Level Workspace Switcher */}
                     <div className="flex bg-[#0A0C10] border border-slate-800/80 rounded p-1 w-full">
@@ -1335,13 +1314,13 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                     </div>
 
                     {activeTab.showCurl && (
-                      <div className="p-4 bg-black border border-emerald-500/20 rounded font-mono space-y-3 relative group overflow-hidden shadow-2xl">
+                      <div className="h-32 p-3 bg-black border border-emerald-500/20 rounded font-mono flex flex-col gap-2 relative group overflow-hidden shadow-2xl shrink-0">
                         <div className="absolute top-0 left-0 w-[2px] h-full bg-emerald-500"></div>
-                        <div className="flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-between opacity-50 group-hover:opacity-100 transition-opacity shrink-0">
                           <span className="text-emerald-500 font-bold text-[9px] tracking-[0.2em]">CURL_ORCHESTRATION_PREVIEW</span>
                           <span className="text-slate-700 text-[9px] font-black">{activeTab.batchMode ? 'CONCURRENT_BATCH' : 'SINGLE_THREAD'}</span>
                         </div>
-                        <pre className="text-emerald-400 text-xs whitespace-pre-wrap break-all leading-relaxed max-h-60 overflow-y-auto no-scrollbar selection:bg-emerald-500/30">
+                        <pre className="text-emerald-405 text-xs whitespace-pre-wrap break-all leading-relaxed flex-1 overflow-y-auto custom-scrollbar selection:bg-emerald-500/30">
                           {(() => {
                             const resolved = getResolvedConfig(activeTab);
                             const isGraphql = resolved.method === 'GRAPHQL';
@@ -1367,14 +1346,6 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                         </pre>
                       </div>
                     )}
-                  </div>
-
-                  <div 
-                    onMouseDown={startResizeRequestTop}
-                    className="h-2 hover:h-2 bg-slate-900 border-b border-slate-805/80 hover:bg-emerald-500 cursor-row-resize flex items-center justify-center transition-all group z-10 shrink-0"
-                    title="Drag down to resize Request Config box"
-                  >
-                    <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-emerald-350 rounded" />
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-[#0B0D11]">
@@ -1492,8 +1463,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                      )}
 
                      {activeTab.config.method === 'GRAPHQL' && (
-                      <section className="flex flex-col gap-5 min-h-[580px] lg:h-[calc(100vh-320px)] pt-2">
-                         <div className="flex-1 flex flex-col min-h-[220px] space-y-2">
+                      <section className="space-y-4 pt-1">
+                         <div className="flex flex-col space-y-2">
                           <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 shrink-0">
                             <Layers size={12} className="text-violet-500 animate-pulse" /> GraphQL_Query
                           </label>
@@ -2355,6 +2326,9 @@ function NetworkLogViewer({
   onClearLogs
 }: NetworkLogViewerProps) {
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SUCCESS' | 'FAILURE'>('ALL');
 
   // Sync selectedResult state with activeTab changes and new runs
   useEffect(() => {
@@ -2367,6 +2341,33 @@ function NetworkLogViewer({
       setSelectedResult(null);
     }
   }, [results.length, activeTabId]);
+
+  // Compute filtered results based on search query, method, and status filters
+  const filteredResults = useMemo(() => {
+    return results.filter(res => {
+      // 1. Search Query
+      const query = searchQuery.trim().toLowerCase();
+      const method = (res.config?.method || 'GET').toUpperCase();
+      const url = (res.config?.url || '').toLowerCase();
+      const statusStr = String(res.status);
+      const isMatchQuery = !query || 
+        method.toLowerCase().includes(query) || 
+        url.includes(query) || 
+        statusStr.includes(query) ||
+        (res.error && res.error.toLowerCase().includes(query));
+
+      // 2. Method Filter
+      const isMatchMethod = methodFilter === 'ALL' || method === methodFilter;
+
+      // 3. Status Filter
+      const isSuccess = res.status >= 200 && res.status < 300;
+      const isMatchStatus = statusFilter === 'ALL' || 
+        (statusFilter === 'SUCCESS' && isSuccess) || 
+        (statusFilter === 'FAILURE' && !isSuccess);
+
+      return isMatchQuery && isMatchMethod && isMatchStatus;
+    });
+  }, [results, searchQuery, methodFilter, statusFilter]);
 
   // Handle empty list states elegantly
   if (results.length === 0) {
@@ -2391,34 +2392,107 @@ function NetworkLogViewer({
   }
 
   return (
-    <div className="flex-grow flex flex-col lg:flex-row h-full bg-[#07080A] text-slate-300 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/65 overflow-hidden font-sans">
+    <div className="flex-grow flex flex-col lg:flex-row h-full bg-[#07080A] text-slate-200 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/80 overflow-hidden font-sans">
       
       {/* LHS Panel: Browser-like compact transaction logs */}
       <div className={cn("flex flex-col h-full bg-black overflow-hidden transition-all duration-300", selectedResult ? "w-full lg:w-[45%]" : "w-full")}>
-        <div className="px-5 py-2.5 border-b border-slate-900 bg-black/40 flex items-center justify-between shrink-0">
+        
+        {/* Main Title Header */}
+        <div className="px-5 py-3 border-b border-slate-900 bg-black/40 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <Activity size={12} className="text-emerald-500 animate-pulse" />
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">TRANSACTIONS ({results.length})</span>
+            <Activity size={14} className="text-emerald-500 animate-pulse" aria-hidden="true" />
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">TRANSACTIONS ({results.length})</h3>
           </div>
-          <div className="flex items-center gap-3 font-semibold pb-0.5">
+          <div className="flex items-center gap-3">
             <button
               onClick={onClearLogs}
-              className="text-[8.5px] font-mono text-slate-400 hover:text-rose-400 uppercase flex items-center gap-1 transition-colors cursor-pointer font-bold border border-slate-800/65 bg-slate-900/40 px-2 py-0.5 rounded"
+              className="text-xs font-mono text-slate-300 hover:text-rose-400 uppercase flex items-center gap-1.5 transition-colors cursor-pointer font-bold border border-slate-800 bg-slate-900/60 px-2.5 py-1 rounded"
               type="button"
+              aria-label="Clear all transaction logs"
             >
-              <Trash2 size={10} /> CLEAR
+              <Trash2 size={11} /> CLEAR
             </button>
-            <span className="text-[8px] font-mono text-slate-700 tracking-tighter uppercase mb-px font-bold">RETAIN: 50</span>
+            <span className="text-xs font-mono text-slate-500 uppercase tracking-tight font-bold">RETAIN: 50</span>
           </div>
         </div>
 
+        {/* Search & Filter Bar */}
+        <div className="px-5 py-3 border-b border-slate-900 bg-[#080B11] flex flex-col gap-2 shrink-0">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input 
+              type="text"
+              placeholder="Search by Method, URL, status code, error..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#11141D] hover:bg-[#151A27] focus:bg-[#151A27] border border-slate-800 focus:border-emerald-500 rounded px-3 py-1.5 pl-9 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-all font-mono"
+              aria-label="Search transaction logs"
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            {/* Method Filters */}
+            <div className="flex items-center gap-1.5" role="group" aria-label="Filter by HTTP Method">
+              <span className="text-xs font-mono font-bold text-slate-400 mr-1 uppercase">Method:</span>
+              {['ALL', 'GET', 'POST', 'PUT', 'DELETE'].map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMethodFilter(m)}
+                  className={cn(
+                    "text-[10px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer font-bold",
+                    methodFilter === m
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                      : "bg-[#11141D] text-slate-400 border-slate-800 hover:text-slate-300 hover:border-slate-700"
+                  )}
+                  type="button"
+                  aria-pressed={methodFilter === m}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+
+            {/* Status Filters */}
+            <div className="flex items-center gap-1.5" role="group" aria-label="Filter by Response Status">
+              <span className="text-xs font-mono font-bold text-slate-400 mr-1 uppercase">Status:</span>
+              {(['ALL', 'SUCCESS', 'FAILURE'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={cn(
+                    "text-[10px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer font-bold",
+                    statusFilter === s
+                      ? s === 'SUCCESS' 
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                        : s === 'FAILURE'
+                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                        : "bg-sky-500/20 text-sky-450 border-sky-500/45"
+                      : "bg-[#11141D] text-slate-400 border-slate-800 hover:text-slate-300 hover:border-slate-700"
+                  )}
+                  type="button"
+                  aria-pressed={statusFilter === s}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Transaction Content Area */}
         <div className="flex-1 overflow-y-auto p-3 px-4 custom-scrollbar space-y-1.5 bg-[#07080A]/40">
           <AnimatePresence initial={false}>
+            {/* Show search empty state */}
+            {filteredResults.length === 0 && (
+              <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-2">
+                <Search size={22} className="text-slate-600 animate-pulse" aria-hidden="true" />
+                <h4 className="uppercase tracking-wider font-bold text-xs text-slate-450">No matching transactions</h4>
+                <p className="text-slate-500 text-xs">Adjust your search query or filters to show results</p>
+              </div>
+            )}
+
             {/* Display chronological list, first hit at the top, latest hit at bottom */}
-            {results.slice(-50).map((res, i) => {
-              const totalItems = results.length;
-              const sliceOffset = totalItems > 50 ? totalItems - 50 : 0;
-              const currentIdx = sliceOffset + i + 1;
+            {filteredResults.slice(-50).map((res, i) => {
+              const originalIndex = results.findIndex(r => r.id === res.id) + 1;
               const rt = res.responseTime;
               const isSelected = selectedResult?.id === res.id;
               const isSuccess = res.status >= 200 && res.status < 300;
@@ -2438,7 +2512,7 @@ function NetworkLogViewer({
               } catch {
                 pathStr = res.config?.url || '';
               }
-              const displayPath = pathStr.length > 28 ? pathStr.slice(0, 26) + '...' : pathStr;
+              const displayPath = pathStr.length > 32 ? pathStr.slice(0, 30) + '...' : pathStr;
 
               return (
                 <motion.div 
@@ -2447,36 +2521,39 @@ function NetworkLogViewer({
                   animate={{ x: 0, opacity: 1 }}
                   onClick={() => setSelectedResult(res)}
                   className={cn(
-                    "group flex border-l-2 py-2 px-3 transition-all cursor-pointer items-center min-h-[36px] gap-3 rounded-r",
+                    "group flex border-l-2 py-2 px-3 transition-all cursor-pointer items-center min-h-[40px] gap-3 rounded-r",
                     isSelected 
-                      ? "border-emerald-500 bg-emerald-500/5 text-white" 
-                      : "border-slate-800 hover:border-slate-600 hover:bg-white/5 text-slate-400"
+                      ? "border-emerald-500 bg-emerald-500/10 text-white" 
+                      : "border-slate-800 hover:border-slate-500 hover:bg-slate-900/40 text-slate-300"
                   )}
+                  role="button"
+                  aria-pressed={isSelected}
+                  aria-label={`Transaction ${originalIndex}: ${method} ${res.config?.url || 'N/A'}, status ${res.status !== 0 ? res.status : 'error'}`}
                 >
-                  <span className="text-slate-600 text-[9px] font-mono w-5 shrink-0">#{currentIdx}</span>
+                  <span className="text-slate-500 text-xs font-mono w-6 shrink-0">#{originalIndex}</span>
                   
                   <div className="flex-1 min-w-0 flex items-center gap-2">
                     <span className={cn(
-                      "text-[8px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wider font-mono",
-                      method === 'GET' ? 'bg-sky-500/10 text-sky-455 border" border-sky-500/15' :
-                      method === 'POST' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' :
-                      method === 'PUT' ? 'bg-amber-500/10 text-amber-400 border border-amber-550/15' :
-                      method === 'DELETE' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/15' :
-                      'bg-slate-500/10 text-slate-400 border border-slate-500/15'
+                      "text-[9px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wider font-mono border shrink-0",
+                      method === 'GET' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
+                      method === 'POST' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                      method === 'PUT' ? 'bg-amber-500/10 text-amber-400 border-amber-550/20' :
+                      method === 'DELETE' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                      'bg-slate-500/10 text-slate-400 border-slate-500/20'
                     )}>
                       {method}
                     </span>
-                    <span className="font-mono text-[10px] text-slate-350 truncate tracking-tight" title={res.config?.url}>
+                    <span className="font-mono text-xs text-slate-300 truncate tracking-tight hover:text-white" title={res.config?.url}>
                       {displayPath}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2.5 font-mono shrink-0 text-[10px]">
-                    <span className={cn("font-black text-[10px] w-8 text-right", isSuccess ? "text-emerald-400" : "text-rose-400")}>
+                  <div className="flex items-center gap-3 font-mono shrink-0 text-xs">
+                    <span className={cn("font-black text-xs w-8 text-right", isSuccess ? "text-emerald-400" : "text-rose-400")}>
                       {res.status !== 0 ? res.status : 'ERR'}
                     </span>
-                    <span className="text-blue-400 font-bold w-12 text-right">{rt}ms</span>
-                    <span className="text-slate-550 w-11 text-right text-[9px]">{formattedSize}</span>
+                    <span className="text-blue-400 font-bold w-14 text-right">{rt}ms</span>
+                    <span className="text-slate-400 w-12 text-right text-[11px] font-medium">{formattedSize}</span>
                   </div>
                 </motion.div>
               );
@@ -2488,20 +2565,20 @@ function NetworkLogViewer({
                 key="pending"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="group flex border-l-2 border-amber-550 bg-amber-500/5 py-2 px-3 items-center min-h-[36px] gap-3 rounded-r text-amber-400/80"
+                className="group flex border-l-2 border-amber-550 bg-amber-550/10 py-2 px-3 items-center min-h-[40px] gap-3 rounded-r text-amber-400"
               >
-                <span className="text-slate-600 text-[9px] font-mono w-5 shrink-0">#{results.length + 1}</span>
+                <span className="text-slate-500 text-xs font-mono w-6 shrink-0">#{results.length + 1}</span>
                 <div className="flex-1 min-w-0 flex items-center gap-2">
-                  <span className="bg-amber-500/10 text-amber-500 border border-amber-500/15 text-[8px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wide animate-pulse font-mono">
+                  <span className="bg-[#FFAA00]/10 text-[#FFAA00] border border-[#FFAA00]/25 text-[9px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wide animate-pulse font-mono">
                     SEND
                   </span>
-                  <span className="font-mono text-[10px] text-amber-405/60 truncate tracking-tight animate-pulse">
+                  <span className="font-mono text-xs text-[#FFAA00]/70 truncate tracking-tight animate-pulse">
                     Requesting transmission...
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <RefreshCw size={10} className="text-amber-500 animate-spin" />
-                  <span className="text-[9px] font-mono text-amber-400/50">PENDING</span>
+                  <RefreshCw size={11} className="text-amber-500 animate-spin" aria-hidden="true" />
+                  <span className="text-xs font-mono text-amber-400/70 font-semibold">PENDING</span>
                 </div>
               </motion.div>
             )}
@@ -2512,16 +2589,17 @@ function NetworkLogViewer({
       {/* RHS Panel: Inspected Response viewer detail */}
       {selectedResult && (
         <div className="flex-1 flex flex-col h-full bg-black relative">
-          <div className="p-2 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0 font-sans">
+          <div className="p-3 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0 font-sans">
             <div className="flex items-center gap-3">
                <button 
                  onClick={() => setSelectedResult(null)}
-                 className="text-[9px] font-mono text-emerald-500 hover:text-emerald-450 font-bold uppercase tracking-widest flex items-center gap-2 cursor-pointer transition-colors"
+                 className="text-xs font-mono text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
+                 aria-label="Close details inspector"
                >
-                 <X size={11} /> CLOSE_DETAIL
+                 <X size={12} aria-hidden="true" /> CLOSE_DETAIL
                </button>
                <span className="w-px h-3 bg-slate-800/80 mx-1"></span>
-               <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tight">
+               <span className="text-xs font-mono text-slate-400 uppercase font-medium">
                  TRANSACTION_DETAIL #{results.findIndex(r => r.id === selectedResult.id) + 1}
                </span>
             </div>
@@ -2544,6 +2622,10 @@ function NetworkLogViewer({
 
 function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }: { results: CurlResult[], progress: ProgressUpdate | null, concurrency: number, onAbort: () => void, theme?: 'dark' | 'light' }) {
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SUCCESS' | 'FAILURE'>('ALL');
+
   const successCount = results.filter(r => r.status >= 200 && r.status < 300).length;
   const failureCount = results.length - successCount;
   const avgResponseTime = results.length > 0 
@@ -2560,6 +2642,33 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
     }));
   }, [results]);
 
+  // Compute filtered results based on search query, method, and status filters
+  const filteredResults = useMemo(() => {
+    return results.filter(res => {
+      // 1. Search Query
+      const query = searchQuery.trim().toLowerCase();
+      const method = (res.config?.method || 'GET').toUpperCase();
+      const url = (res.config?.url || '').toLowerCase();
+      const statusStr = String(res.status);
+      const isMatchQuery = !query || 
+        method.toLowerCase().includes(query) || 
+        url.includes(query) || 
+        statusStr.includes(query) ||
+        (res.error && res.error.toLowerCase().includes(query));
+
+      // 2. Method Filter
+      const isMatchMethod = methodFilter === 'ALL' || method === methodFilter;
+
+      // 3. Status Filter
+      const isSuccess = res.status >= 200 && res.status < 300;
+      const isMatchStatus = statusFilter === 'ALL' || 
+        (statusFilter === 'SUCCESS' && isSuccess) || 
+        (statusFilter === 'FAILURE' && !isSuccess);
+
+      return isMatchQuery && isMatchMethod && isMatchStatus;
+    });
+  }, [results, searchQuery, methodFilter, statusFilter]);
+
   return (
     <div className="flex flex-col lg:flex-row h-full bg-black text-slate-300 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/60 overflow-hidden">
       {/* Panel 1: STREAM_ORCHESTRATOR & Telemetry Logs */}
@@ -2569,22 +2678,23 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-1.5 bg-amber-500/10 rounded border border-amber-500/20">
-                <Layers size={14} className="text-amber-500" />
+                <Layers size={14} className="text-amber-500" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] leading-none">STREAM_ORCHESTRATOR</h3>
-                <p className="text-[8px] text-slate-500 font-mono mt-1 uppercase tracking-widest">Multi-Threaded_Execution_Telemetry</p>
+                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] leading-none">STREAM_ORCHESTRATOR</h3>
+                <p className="text-[10px] text-slate-400 font-mono mt-1.5 uppercase tracking-widest">Multi-Threaded_Execution_Telemetry</p>
               </div>
             </div>
             {progress && (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-[#10B981]/10 border border-[#10B981]/25 rounded">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></div>
-                  <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">RUNNING</span>
+                  <span className="text-[9px] font-black text-[#10B981] uppercase tracking-wider">RUNNING</span>
                 </div>
                 <button 
                   onClick={onAbort}
-                  className="text-[9px] font-black text-slate-400 border border-slate-800 px-3 py-1 rounded hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all uppercase tracking-widest cursor-pointer"
+                  className="text-[10px] font-bold text-slate-300 border border-slate-800 px-3 py-1 rounded hover:bg-rose-600 hover:text-white hover:border-rose-650 transition-all uppercase tracking-wider cursor-pointer"
+                  aria-label="Stop batch stream execution"
                 >
                   SIGINT
                 </button>
@@ -2594,14 +2704,14 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
 
           <div className="space-y-2">
             <div className="flex justify-between items-end">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 PROGRESS <span className="text-white ml-2 font-mono">{progress ? progress.completed : results.length} / {progress ? progress.total : results.length}</span>
               </div>
-              <div className="text-[11px] font-black text-emerald-500 font-mono">
+              <div className="text-xs font-black text-emerald-500 font-mono">
                 {progress && progress.total > 0 ? ((progress.completed / progress.total) * 100).toFixed(1) : (results.length > 0 ? '100.0' : '0.0')}%
               </div>
             </div>
-            <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+            <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
               <motion.div 
                  className="h-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
                  initial={{ width: 0 }}
@@ -2613,13 +2723,13 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
 
           <div className="grid grid-cols-4 gap-4">
              {[
-               { label: 'PASSED', val: successCount, color: 'text-emerald-500' },
-               { label: 'FAILED', val: failureCount, color: 'text-rose-500' },
-               { label: 'AVG_LAT', val: `${avgResponseTimeStr}ms`, color: 'text-blue-400' },
-               { label: 'THREAD', val: progress ? concurrency : '-', color: 'text-amber-500' }
+               { label: 'PASSED', val: successCount, color: 'text-emerald-400 font-bold' },
+               { label: 'FAILED', val: failureCount, color: 'text-rose-400 font-bold' },
+               { label: 'AVG_LAT', val: `${avgResponseTimeStr}ms`, color: 'text-blue-400 font-bold' },
+               { label: 'THREAD', val: progress ? concurrency : '-', color: 'text-amber-400 font-bold' }
              ].map(stat => (
                <div key={stat.label} className="space-y-1">
-                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">{stat.label}</div>
+                 <div className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">{stat.label}</div>
                  <div className={cn("text-base font-black font-mono leading-none", stat.color)}>{stat.val}</div>
                </div>
              ))}
@@ -2627,9 +2737,9 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
 
           {/* Real-time Latency Chart */}
           <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-900 space-y-2">
-            <div className="flex justify-between items-center text-[7px] font-black text-slate-500 uppercase tracking-[0.2em]">
+            <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
               <span>LATENCY_FLUCTUATIONS (LAST 40 CALLS)</span>
-              {results.length > 0 && <span className="text-blue-400 font-mono text-[8px]">{results[results.length - 1]?.responseTime}ms</span>}
+              {results.length > 0 && <span className="text-blue-400 font-mono text-[10px]">{results[results.length - 1]?.responseTime}ms</span>}
             </div>
             <div className="h-16 w-full">
               {results.length > 0 ? (
@@ -2639,7 +2749,7 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fill: '#475569', fontSize: 8, fontFamily: 'monospace' }} 
+                      tick={{ fill: '#475569', fontSize: 9, fontFamily: 'monospace' }} 
                       domain={['auto', 'auto']}
                     />
                     <Tooltip 
@@ -2647,7 +2757,7 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
-                            <div className="bg-[#090D14]/95 border border-slate-800 p-2 text-[9px] font-mono rounded shadow-lg text-slate-300">
+                            <div className="bg-[#090D14]/95 border border-slate-800 p-2 text-[10px] font-mono rounded shadow-lg text-slate-300">
                               <div className="text-slate-500 font-bold mb-1">{data.name}</div>
                               <div className="flex gap-2">
                                 <span>LATENCY:</span>
@@ -2655,7 +2765,7 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
                               </div>
                               <div className="flex gap-2">
                                 <span>STATUS:</span>
-                                <span className={data.success ? "text-emerald-500" : "text-rose-500 font-bold"}>
+                                <span className={data.success ? "text-emerald-500 font-bold" : "text-rose-500 font-bold"}>
                                   {data.status}
                                 </span>
                               </div>
@@ -2684,8 +2794,8 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center border border-dashed border-slate-900 rounded bg-[#090D14]/20">
-                  <span className="text-[7.5px] font-mono text-slate-600 uppercase tracking-widest">Awaiting transmissions</span>
+                <div className="h-full flex items-center justify-center border border-dashed border-slate-900 rounded bg-[#090D14]/25">
+                  <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Awaiting transmissions</span>
                 </div>
               )}
             </div>
@@ -2695,27 +2805,104 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
         {/* Telemetry Logs List */}
         <div className="flex-1 overflow-hidden flex flex-col">
           <div className="px-6 py-2 border-b border-slate-900 bg-black/40 flex items-center justify-between shrink-0">
-             <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">TELEMETRY_LOGS</span>
-             <div className="text-[8px] font-mono text-slate-700 tracking-tighter uppercase">SESSION_RETAIN: 50</div>
+             <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">TELEMETRY_LOGS</span>
+             <div className="text-xs font-mono text-slate-500 font-bold uppercase">SESSION_RETAIN: 50</div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 px-6 custom-scrollbar space-y-1 bg-black">
+
+          {/* Search & Filter Bar */}
+          <div className="px-6 py-3 border-b border-slate-900 bg-[#080B11] flex flex-col gap-2 shrink-0">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input 
+                type="text"
+                placeholder="Search by Method, URL, status code, error..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#11141D] hover:bg-[#151A27] focus:bg-[#151A27] border border-slate-800 focus:border-amber-550 rounded px-3 py-1.5 pl-9 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-all font-mono"
+                aria-label="Search batch telemetry logs"
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              {/* Method Filters */}
+              <div className="flex items-center gap-1.5" role="group" aria-label="Filter batch logs by HTTP Method">
+                <span className="text-xs font-mono font-bold text-slate-400 mr-1 uppercase">Method:</span>
+                {['ALL', 'GET', 'POST', 'PUT', 'DELETE'].map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMethodFilter(m)}
+                    className={cn(
+                      "text-[10px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer font-bold",
+                      methodFilter === m
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                        : "bg-[#11141D] text-slate-400 border-slate-800 hover:text-slate-300 hover:border-slate-700"
+                    )}
+                    type="button"
+                    aria-pressed={methodFilter === m}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status Filters */}
+              <div className="flex items-center gap-1.5" role="group" aria-label="Filter batch logs by Response Status">
+                <span className="text-xs font-mono font-bold text-slate-400 mr-1 uppercase">Status:</span>
+                {(['ALL', 'SUCCESS', 'FAILURE'] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={cn(
+                      "text-[10px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer font-bold",
+                      statusFilter === s
+                        ? s === 'SUCCESS' 
+                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                          : s === 'FAILURE'
+                          ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                          : "bg-sky-500/20 text-sky-400 border-sky-500/40"
+                        : "bg-[#11141D] text-slate-400 border-slate-800 hover:text-slate-300 hover:border-slate-700"
+                    )}
+                    type="button"
+                    aria-pressed={statusFilter === s}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* List Area */}
+          <div className="flex-1 overflow-y-auto p-4 px-6 custom-scrollbar space-y-1.5 bg-black">
             <AnimatePresence initial={false}>
-              {[...results].slice(-50).reverse().map((res, i) => {
-                const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : results.length - i;
+              {/* Show empty search match state */}
+              {filteredResults.length === 0 && results.length > 0 && (
+                <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-2">
+                  <Search size={22} className="text-slate-600 animate-pulse" aria-hidden="true" />
+                  <h4 className="uppercase tracking-wider font-bold text-xs text-slate-450">No matching telemetry logs</h4>
+                  <p className="text-slate-550 text-xs">Adjust your search query or filters to show streams</p>
+                </div>
+              )}
+
+              {[...filteredResults].slice(-55).reverse().map((res, i) => {
+                const originalIndex = results.findIndex(r => r.id === res.id) + 1;
                 const rt = res.responseTime;
                 const isSelected = selectedResult?.id === res.id;
+                const isSuccess = res.status >= 200 && res.status < 300;
 
                 const bodyLength = res.body ? res.body.length : 0;
                 const formattedSize = bodyLength > 1024 
                   ? `${(bodyLength / 1024).toFixed(1)} KB` 
                   : `${bodyLength} B`;
 
-                const reqLength = res.requestSize !== undefined ? res.requestSize : 0;
-                const formattedReqSize = reqLength > 1024
-                  ? `${(reqLength / 1024).toFixed(1)} KB`
-                  : `${reqLength} B`;
-
-                const isSuccess = res.status >= 200 && res.status < 300;
+                const method = (res.config?.method || 'GET').toUpperCase();
+                let pathStr = '';
+                try {
+                  const urlObj = new URL(res.config?.url || '');
+                  pathStr = urlObj.pathname + urlObj.search;
+                } catch {
+                  pathStr = res.config?.url || '';
+                }
+                const displayPath = pathStr.length > 32 ? pathStr.slice(0, 30) + '...' : pathStr;
 
                 return (
                   <motion.div 
@@ -2724,40 +2911,51 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
                     animate={{ x: 0, opacity: 1 }}
                     onClick={() => setSelectedResult(res)}
                     className={cn(
-                      "group flex border-l-[2px] py-2.5 pl-4 transition-all cursor-pointer items-center min-h-[44px] gap-4 rounded-r",
+                      "group flex border-l-2 py-2 px-3 transition-all cursor-pointer items-center min-h-[40px] gap-3 rounded-r",
                       isSelected 
-                        ? "border-emerald-500 bg-emerald-500/5 text-white" 
-                        : "border-slate-800 hover:border-white hover:bg-white/5"
+                        ? "border-emerald-500 bg-emerald-500/10 text-white" 
+                        : "border-slate-800 hover:border-slate-500 hover:bg-slate-900/40 text-slate-300"
                     )}
+                    role="button"
+                    aria-pressed={isSelected}
+                    aria-label={`Iteration log ${originalIndex}: ${method} ${res.config?.url || 'N/A'}, status ${res.status !== 0 ? res.status : 'error'}`}
                   >
-                    <span className="text-slate-550 text-[10px] font-bold w-8 shrink-0">#{currentIdx}</span>
-                    <div className="flex-1 flex flex-wrap items-center gap-5 sm:gap-6">
-                      <div className="flex flex-col min-w-[70px]">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">HTTP_STATUS</span>
-                        <span className={cn("text-[14px] font-black tracking-tight flex items-center gap-1.5 leading-none mt-0.5", theme === 'light' ? "text-black" : "text-white")}>
-                          {res.status} 
-                          <span className={cn("text-[8px] px-1 py-0.5 rounded font-black tracking-wider uppercase leading-none", isSuccess ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20")}>
-                            {isSuccess ? 'OK' : 'ERR'}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex flex-col min-w-[75px]">
-                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">RESPONSE_TIME</span>
-                        <span className={cn("text-[14px] font-black font-mono leading-none mt-0.5", theme === 'light' ? "text-black" : "text-white")}>
-                          {rt}<span className="text-[9px] text-blue-500 font-bold ml-0.5">ms</span>
-                        </span>
-                      </div>
+                    <span className="text-slate-500 text-xs font-mono w-6 shrink-0">#{originalIndex}</span>
+                    
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <span className={cn(
+                        "text-[9px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wider font-mono border shrink-0",
+                        method === 'GET' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
+                        method === 'POST' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                        method === 'PUT' ? 'bg-amber-500/10 text-amber-400 border-amber-550/20' :
+                        method === 'DELETE' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                        'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                      )}>
+                        {method}
+                      </span>
+                      <span className="font-mono text-xs text-slate-300 truncate tracking-tight hover:text-white" title={res.config?.url}>
+                        {displayPath}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 font-mono shrink-0 text-xs">
+                      <span className={cn("font-black text-xs w-8 text-right", isSuccess ? "text-emerald-400" : "text-rose-400")}>
+                        {res.status !== 0 ? res.status : 'ERR'}
+                      </span>
+                      <span className="text-blue-400 font-bold w-14 text-right">{rt}ms</span>
+                      <span className="text-slate-400 w-12 text-right text-[11px] font-medium">{formattedSize}</span>
                     </div>
                   </motion.div>
                 );
               })}
             </AnimatePresence>
+
             {results.length === 0 && !progress && (
-              <div className="h-full flex flex-col items-center justify-center opacity-20 text-center space-y-4">
+              <div className="h-full flex flex-col items-center justify-center opacity-25 text-center space-y-4 py-16">
                 <div className="w-12 h-12 border-2 border-dashed border-slate-700 rounded-full flex items-center justify-center animate-spin-slow">
-                   <Activity size={24} />
+                   <Activity size={24} aria-hidden="true" />
                 </div>
-                <div className="uppercase tracking-[0.4em] font-black text-[10px]">Standby_Stream_Init</div>
+                <div className="uppercase tracking-[0.4em] font-black text-xs text-slate-400">Standby_Stream_Init</div>
               </div>
             )}
           </div>
@@ -2767,24 +2965,26 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
       {/* Panel 2: Result details dynamically side-by-side! */}
       {selectedResult && (
         <div className="flex-1 flex flex-col h-full bg-black relative">
-          <div className="p-3 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0">
+          <div className="p-3 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0 font-sans">
             <div className="flex items-center gap-3">
                <button 
                  onClick={() => setSelectedResult(null)}
-                 className="text-[9px] font-mono text-emerald-500 hover:text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-2 cursor-pointer"
+                 className="text-xs font-mono text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
+                 aria-label="Close batch log inspector"
                >
-                 <X size={12} /> CLOSE_DETAIL
+                 <X size={12} aria-hidden="true" /> CLOSE_DETAIL
                </button>
                <span className="w-px h-3 bg-slate-800 mx-1"></span>
-               <span className="text-[10px] font-mono text-slate-500 uppercase">
+               <span className="text-xs font-mono text-slate-400 uppercase font-medium">
                  REQ_DETAIL #{results.findIndex(r => r.id === selectedResult.id) + 1}
                </span>
             </div>
             <button 
               onClick={() => setSelectedResult(null)}
               className="text-slate-500 hover:text-white cursor-pointer"
+              aria-label="Close details inspector icon"
             >
-              <X size={14} />
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
