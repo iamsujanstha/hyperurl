@@ -23,9 +23,6 @@ export function NetworkLogViewer({
   onClearLogs
 }: NetworkLogViewerProps) {
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [methodFilter, setMethodFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SUCCESS' | 'FAILURE'>('ALL');
 
   // Sync selectedResult state with activeTab changes and new runs
   useEffect(() => {
@@ -39,32 +36,8 @@ export function NetworkLogViewer({
     }
   }, [results.length, activeTabId]);
 
-  // Compute filtered results based on search query, method, and status filters
-  const filteredResults = useMemo(() => {
-    return results.filter(res => {
-      // 1. Search Query
-      const query = searchQuery.trim().toLowerCase();
-      const method = (res.config?.method || 'GET').toUpperCase();
-      const url = (res.config?.url || '').toLowerCase();
-      const statusStr = String(res.status);
-      const isMatchQuery = !query || 
-        method.toLowerCase().includes(query) || 
-        url.includes(query) || 
-        statusStr.includes(query) ||
-        (res.error && res.error.toLowerCase().includes(query));
-
-      // 2. Method Filter
-      const isMatchMethod = methodFilter === 'ALL' || method === methodFilter;
-
-      // 3. Status Filter
-      const isSuccess = res.status >= 200 && res.status < 300;
-      const isMatchStatus = statusFilter === 'ALL' || 
-        (statusFilter === 'SUCCESS' && isSuccess) || 
-        (statusFilter === 'FAILURE' && !isSuccess);
-
-      return isMatchQuery && isMatchMethod && isMatchStatus;
-    });
-  }, [results, searchQuery, methodFilter, statusFilter]);
+  // Compute filtered results (filters are requested to be removed, so we fallback to all results directly)
+  const filteredResults = results;
 
   // Handle empty list states elegantly
   if (results.length === 0) {
@@ -113,79 +86,9 @@ export function NetworkLogViewer({
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="px-5 py-3 border-b border-slate-900 bg-[#080B11] flex flex-col gap-2 shrink-0">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input 
-              type="text"
-              placeholder="Search by Method, URL, status code, error..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#11141D] hover:bg-[#151A27] focus:bg-[#151A27] border border-slate-800 focus:border-emerald-500 rounded px-3 py-1.5 pl-9 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-all font-mono"
-              aria-label="Search transaction logs"
-            />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            {/* Method Filters */}
-            <div className="flex items-center gap-1.5" role="group" aria-label="Filter by HTTP Method">
-              <span className="text-xs font-mono font-bold text-slate-400 mr-1 uppercase">Method:</span>
-              {['ALL', 'GET', 'POST', 'PUT', 'DELETE'].map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMethodFilter(m)}
-                  className={cn(
-                    "text-[10px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer font-bold",
-                    methodFilter === m
-                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                      : "bg-[#11141D] text-slate-400 border-slate-800 hover:text-slate-300 hover:border-slate-700"
-                  )}
-                  type="button"
-                  aria-pressed={methodFilter === m}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-
-            {/* Status Filters */}
-            <div className="flex items-center gap-1.5" role="group" aria-label="Filter by Response Status">
-              <span className="text-xs font-mono font-bold text-slate-400 mr-1 uppercase">Status:</span>
-              {(['ALL', 'SUCCESS', 'FAILURE'] as const).map(s => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={cn(
-                    "text-[10px] font-mono px-2 py-0.5 rounded border transition-all cursor-pointer font-bold",
-                    statusFilter === s
-                      ? s === 'SUCCESS' 
-                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                        : s === 'FAILURE'
-                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
-                        : "bg-sky-500/20 text-sky-400 border-sky-500/40"
-                      : "bg-[#11141D] text-slate-400 border-slate-800 hover:text-slate-300 hover:border-slate-700"
-                  )}
-                  type="button"
-                  aria-pressed={statusFilter === s}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Transaction Content Area */}
         <div className="flex-1 overflow-y-auto p-3 px-4 custom-scrollbar space-y-1.5 bg-[#07080A]/40">
           <AnimatePresence initial={false}>
-            {/* Show search empty state */}
-            {filteredResults.length === 0 && (
-              <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-2">
-                <Search size={22} className="text-slate-600 animate-pulse" aria-hidden="true" />
-                <h4 className="uppercase tracking-wider font-bold text-xs text-slate-450">No matching transactions</h4>
-                <p className="text-slate-500 text-xs">Adjust your search query or filters to show results</p>
-              </div>
-            )}
 
             {/* Display chronological list, first hit at the top, latest hit at bottom */}
             {filteredResults.slice(-50).map((res, i) => {

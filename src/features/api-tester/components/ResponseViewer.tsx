@@ -196,7 +196,7 @@ export function ResponseViewer({
                         srcDoc={result.body || ''} 
                         sandbox="allow-scripts" 
                         loading="lazy"
-                        className="w-full h-[600px] bg-white rounded-lg border border-slate-300"
+                        className="w-full h-[600px] bg-white rounded-lg border border-slate-900/15 dark:border-slate-800/40"
                       />
                     </div>
                   );
@@ -219,7 +219,7 @@ export function ResponseViewer({
                           <img 
                             src={bodyStr.startsWith('data:') ? bodyStr : `data:${contentType};base64,${bodyStr}`} 
                             alt="Response Asset" 
-                            className="max-w-full max-h-[550px] object-contain border border-slate-200 rounded" 
+                            className="max-w-full max-h-[550px] object-contain border border-slate-900/15 dark:border-slate-800/40 rounded" 
                             referrerPolicy="no-referrer"
                           />
                         )}

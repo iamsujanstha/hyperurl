@@ -1474,7 +1474,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                   onClick={() => setShowLabCurl(!showLabCurl)}
                   className={cn(
                     "text-xs font-mono flex items-center gap-1.5 uppercase transition-all px-2.5 py-1 rounded-lg border",
-                    showLabCurl ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200"
+                    showLabCurl ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" : "bg-white/5 border-slate-800/45 text-slate-400 hover:text-slate-200"
                   )}
                 >
                   <Terminal size={12} /> {showLabCurl ? 'HIDE CODE' : 'SHOW SHELL'}
