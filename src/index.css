@@ -149,11 +149,15 @@
 /* Blanket neutral/gray border styles overrides to crisp slate-300 */
 .theme-light .border-slate-800,
 .theme-light .border-slate-850,
+.theme-light .border-slate-800\/60,
 .theme-light .border-slate-800\/80,
 .theme-light .border-slate-850\/60,
 .theme-light .border-slate-850\/80,
 .theme-light .border-slate-900,
+.theme-light .border-slate-900\/40,
+.theme-light .border-slate-900\/60,
 .theme-light .border-slate-900\/50,
+.theme-light .border-slate-950,
 .theme-light .border-slate-705,
 .theme-light .border-slate-755,
 .theme-light .border-\[\#1E293B\] {
