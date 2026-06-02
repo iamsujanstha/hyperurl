@@ -33,6 +33,7 @@ interface Tab {
   graphqlVariables?: string;
   headersList: { id: string, key: string, value: string }[];
   result: CurlResult | null;
+  results: CurlResult[];
   batchResults: CurlResult[];
   batchMode: boolean;
   batchIterations?: number;
@@ -247,6 +248,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
           // Add safety for missing properties in old state
           return parsed.map(t => ({
             ...t,
+            results: Array.isArray(t.results) ? t.results : (t.result ? [t.result] : []),
             batchResults: Array.isArray(t.batchResults) ? t.batchResults : [],
             batchMode: !!t.batchMode,
             showCurl: !!t.showCurl,
@@ -267,6 +269,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       config: { method: 'GET', url: 'https://jsonplaceholder.typicode.com/todos/1', headers: {}, body: '' },
       headersList: [{ id: '1', key: 'Content-Type', value: 'application/json' }],
       result: null,
+      results: [],
       batchResults: [],
       batchMode: false,
       batchIterations: 10,
@@ -415,6 +418,87 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
 
   const [splitPercent, setSplitPercent] = useState(50);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+
+  const [graphqlQueryHeight, setGraphqlQueryHeight] = useState<number>(260);
+  const [graphqlVariablesHeight, setGraphqlVariablesHeight] = useState<number>(185);
+  const [payloadJsonHeight, setPayloadJsonHeight] = useState<number>(192);
+  const [requestTopHeight, setRequestTopHeight] = useState<number>(220);
+
+  const startResizeRequestTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = requestTopHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      setRequestTopHeight(Math.max(120, Math.min(1000, startHeight + deltaY)));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const startResizeQuery = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = graphqlQueryHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      setGraphqlQueryHeight(Math.max(100, Math.min(800, startHeight + deltaY)));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const startResizeVariables = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = graphqlVariablesHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      setGraphqlVariablesHeight(Math.max(80, Math.min(600, startHeight + deltaY)));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const startResizePayloadJson = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = payloadJsonHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      setPayloadJsonHeight(Math.max(100, Math.min(800, startHeight + deltaY)));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   useEffect(() => {
     if (!isDraggingSplit) return;
@@ -575,6 +659,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       config: col.requests[0],
       headersList: col.requests[0].headersList,
       result: null,
+      results: [],
       batchResults: [],
       batchMode: true,
       showCurl: false,
@@ -669,22 +754,31 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         }
 
         const data = await response.json();
-        updateActiveTab({ result: data });
+        const dataWithConfig = { ...data, config: resolvedConfig };
+        const currentResults = Array.isArray(activeTab.results) ? activeTab.results : [];
+        updateActiveTab({ 
+          result: dataWithConfig,
+          results: [...currentResults, dataWithConfig]
+        });
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           console.error(err);
           // Create dummy result for error display
+          const errorResult = {
+            id: uuidv4(),
+            status: 0,
+            headers: {},
+            body: '',
+            responseTime: 0,
+            rawOutput: err.message,
+            error: err.message,
+            curlCommand: 'N/A',
+            config: resolvedConfig
+          };
+          const currentResults = Array.isArray(activeTab.results) ? activeTab.results : [];
           updateActiveTab({ 
-            result: {
-              id: uuidv4(),
-              status: 0,
-              headers: {},
-              body: '',
-              responseTime: 0,
-              rawOutput: err.message,
-              error: err.message,
-              curlCommand: 'N/A'
-            }
+            result: errorResult,
+            results: [...currentResults, errorResult]
           });
         }
       } finally {
@@ -703,6 +797,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       graphqlVariables: savedReq?.graphqlVariables || '',
       headersList: savedReq?.headersList || [{ id: '1', key: 'Content-Type', value: 'application/json' }],
       result: null,
+      results: [],
       batchResults: [],
       batchMode: false,
       batchIterations: 10,
@@ -1125,7 +1220,10 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${splitPercent}%` : '100%' }}
                   className="w-full lg:w-auto lg:flex-none border-r border-slate-800 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar"
                 >
-                  <div className="p-4 border-b border-slate-800 flex flex-col gap-4 shrink-0">
+                  <div 
+                    style={{ height: `${requestTopHeight}px` }}
+                    className="p-4 border-b border-slate-800 flex flex-col gap-4 shrink-0 overflow-y-auto custom-scrollbar relative"
+                  >
                     {/* REST vs GraphQL High-Level Workspace Switcher */}
                     <div className="flex bg-[#0A0C10] border border-slate-800/80 rounded p-1 w-full">
                       <button
@@ -1271,6 +1369,14 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                     )}
                   </div>
 
+                  <div 
+                    onMouseDown={startResizeRequestTop}
+                    className="h-2 hover:h-2 bg-slate-900 border-b border-slate-805/80 hover:bg-emerald-500 cursor-row-resize flex items-center justify-center transition-all group z-10 shrink-0"
+                    title="Drag down to resize Request Config box"
+                  >
+                    <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-emerald-350 rounded" />
+                  </div>
+
                   <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-[#0B0D11]">
                     {/* LHS Batch Mode Customizer */}
                     {activeTab.batchMode && (
@@ -1368,11 +1474,20 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                             Prettify_JSON
                           </button>
                         </div>
-                        <textarea
-                          value={activeTab.config.body}
-                          onChange={(e) => updateActiveConfig({ body: e.target.value })}
-                          className="w-full bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-emerald-400/90 outline-none h-48 resize-y focus:border-emerald-500/45 tracking-wide leading-relaxed shadow-inner"
-                        />
+                        <div className="relative flex flex-col" style={{ height: `${payloadJsonHeight}px` }}>
+                          <textarea
+                            value={activeTab.config.body}
+                            onChange={(e) => updateActiveConfig({ body: e.target.value })}
+                            className="w-full flex-1 bg-black/40 border border-t border-x border-slate-800 rounded-t-lg p-4 font-mono text-xs text-emerald-400/90 outline-none resize-none focus:border-emerald-500/45 tracking-wide leading-relaxed shadow-inner"
+                          />
+                          <div 
+                            onMouseDown={startResizePayloadJson}
+                            className="h-2 hover:h-2 bg-slate-900 border border-slate-805/80 border-t-0 hover:bg-emerald-500 cursor-row-resize flex items-center justify-center transition-all group z-10 rounded-b-lg shrink-0"
+                            title="Drag down to resize Payload JSON box"
+                          >
+                            <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-emerald-350 rounded" />
+                          </div>
+                        </div>
                       </section>
                      )}
 
@@ -1382,14 +1497,23 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                           <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 shrink-0">
                             <Layers size={12} className="text-violet-500 animate-pulse" /> GraphQL_Query
                           </label>
-                          <textarea
-                            value={activeTab.graphqlQuery || ''}
-                            onChange={(e) => updateActiveTab({ graphqlQuery: e.target.value })}
-                            placeholder="query MyQuery { ... }"
-                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-violet-400/90 outline-none resize-y focus:border-violet-500/45 leading-relaxed shadow-inner"
-                          />
+                          <div className="relative flex flex-col w-full" style={{ height: `${graphqlQueryHeight}px` }}>
+                            <textarea
+                              value={activeTab.graphqlQuery || ''}
+                              onChange={(e) => updateActiveTab({ graphqlQuery: e.target.value })}
+                              placeholder="query MyQuery { ... }"
+                              className="w-full flex-1 bg-black/40 border border-t border-x border-slate-800 rounded-t-lg p-4 font-mono text-xs text-violet-400/90 outline-none resize-none focus:border-violet-500/45 leading-relaxed shadow-inner"
+                            />
+                            <div 
+                              onMouseDown={startResizeQuery}
+                              className="h-2 hover:h-2 bg-slate-900 border border-slate-805/80 border-t-0 hover:bg-violet-500 cursor-row-resize flex items-center justify-center transition-all group z-10 rounded-b-lg shrink-0"
+                              title="Drag down to resize Query box"
+                            >
+                              <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-violet-350 rounded" />
+                            </div>
+                          </div>
                         </div>
-                        <div className="h-48 md:h-[240px] flex flex-col shrink-0 space-y-2">
+                        <div className="flex flex-col shrink-0 space-y-2">
                           <div className="flex items-center justify-between shrink-0">
                             <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
                                <Database size={12} className="text-blue-500" /> Variables_JSON
@@ -1403,17 +1527,26 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                                    showCustomAlert('INVALID JSON', 'Malformed syntax in GraphQL variables detector. Ensure keys and values are properly quoted.');
                                  }
                               }}
-                              className="text-xs font-bold font-mono text-slate-450 hover:text-blue-400 uppercase transition-colors cursor-pointer"
+                              className="text-xs font-bold font-mono text-slate-455 hover:text-blue-400 uppercase transition-colors cursor-pointer"
                             >
                               Format_Vars
                             </button>
                           </div>
-                          <textarea
-                            value={activeTab.graphqlVariables || ''}
-                            onChange={(e) => updateActiveTab({ graphqlVariables: e.target.value })}
-                            placeholder='{ "id": 1 }'
-                            className="w-full flex-1 bg-black/40 border border-slate-800 rounded-lg p-4 font-mono text-xs text-blue-400/95 outline-none resize-y focus:border-blue-500/45 leading-relaxed"
-                          />
+                          <div className="relative flex flex-col w-full" style={{ height: `${graphqlVariablesHeight}px` }}>
+                            <textarea
+                              value={activeTab.graphqlVariables || ''}
+                              onChange={(e) => updateActiveTab({ graphqlVariables: e.target.value })}
+                              placeholder='{ "id": 1 }'
+                              className="w-full flex-1 bg-black/40 border border-t border-x border-slate-800 rounded-t-lg p-4 font-mono text-xs text-blue-400/95 outline-none resize-none focus:border-blue-500/45 leading-relaxed"
+                            />
+                            <div 
+                              onMouseDown={startResizeVariables}
+                              className="h-2 hover:h-2 bg-slate-900 border border-slate-805/80 border-t-0 hover:bg-blue-500 cursor-row-resize flex items-center justify-center transition-all group z-10 rounded-b-lg shrink-0"
+                              title="Drag down to resize Variables box"
+                            >
+                              <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-blue-350 rounded" />
+                            </div>
+                          </div>
                         </div>
                       </section>
                      )}
@@ -1442,11 +1575,13 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                       theme={theme}
                     />
                   ) : (
-                    <ResponseViewer 
-                      result={activeTab.result} 
-                      loading={activeTab.loading} 
-                      onAbort={handleAbort} 
+                    <NetworkLogViewer
+                      results={activeTab.results || []}
+                      loading={activeTab.loading}
+                      onAbort={handleAbort}
                       theme={theme}
+                      activeTabId={activeTabId}
+                      onClearLogs={() => updateActiveTab({ results: [], result: null })}
                     />
                   )}
                 </div>
@@ -1840,11 +1975,32 @@ function ResponseViewer({
   defaultTab?: 'response' | 'preview' | 'headers' | 'log'
 }) {
   const [activeResTab, setActiveResTab] = useState<'response' | 'preview' | 'headers'>(
-    defaultTab === 'log' ? 'headers' : (defaultTab as any || 'response')
+    defaultTab === 'log' ? 'response' : (defaultTab as any || 'response')
   );
 
+  const [responseBoxHeight, setResponseBoxHeight] = useState<number>(450);
+
+  const startResizeResponse = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = responseBoxHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      setResponseBoxHeight(Math.max(150, Math.min(1200, startHeight + deltaY)));
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   useEffect(() => {
-    setActiveResTab(defaultTab === 'log' ? 'headers' : (defaultTab as any || 'response'));
+    setActiveResTab(defaultTab === 'log' ? 'response' : (defaultTab as any || 'response'));
   }, [defaultTab, result?.id]);
 
   if (loading) {
@@ -1901,40 +2057,9 @@ function ResponseViewer({
     : `${reqLength} B`;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-black">
+    <div className="flex flex-col bg-black">
       <div className="flex flex-col border-b border-slate-900 bg-[#0F1115] shrink-0">
-        {/* Top Section: Metrics and HTTP status show */}
-        <div className="p-3 px-4 border-b border-slate-950 flex items-center justify-between">
-          <div className="flex flex-wrap items-center gap-5 sm:gap-6">
-            <div className="flex flex-col">
-               <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">HTTP_STATUS</span>
-               <span className={cn("text-[14px] font-black tracking-tight flex items-center gap-1.5", theme === 'light' ? "text-black" : "text-white")}>
-                 {result.status} 
-                 <span className={cn("text-[8px] px-1 py-0.5 rounded font-black tracking-wider uppercase", isSuccess ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20")}>
-                   {isSuccess ? 'OK' : 'ERR'}
-                 </span>
-               </span>
-            </div>
-            <div className="flex flex-col">
-               <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">RESPONSE_TIME</span>
-               <span className={cn("text-[14px] font-black font-mono", theme === 'light' ? "text-black" : "text-white")}>
-                 {result.responseTime}<span className="text-[9px] text-blue-500 font-bold ml-0.5">ms</span>
-               </span>
-            </div>
-            <div className="flex flex-col">
-               <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">REQ_SIZE</span>
-               <span className={cn("text-[14px] font-black font-mono", theme === 'light' ? "text-black" : "text-white")}>
-                 {formattedReqSize}
-               </span>
-            </div>
-            <div className="flex flex-col">
-               <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">DATA_SIZE</span>
-               <span className={cn("text-[14px] font-black font-mono", theme === 'light' ? "text-black" : "text-white")}>
-                 {formattedSize}
-               </span>
-            </div>
-          </div>
-            {/* Bottom Section: Tabs bar and actions */}
+        {/* Bottom Section: Tabs bar and actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-2 px-4 bg-black/40">
           <div className="flex flex-wrap gap-1 bg-black/60 p-1 rounded border border-slate-800/80 overflow-x-auto">
             {(['response', 'preview', 'headers'] as const).map(tab => (
@@ -1946,9 +2071,31 @@ function ResponseViewer({
                   activeResTab === tab ? "bg-slate-800 text-white" : "text-slate-600 hover:text-slate-400"
                 )}
               >
-                {tab === 'response' ? 'BODY' : tab === 'preview' ? 'PREVIEW' : 'HEADERS'}
+                {tab === 'response' ? 'RESPONSE' : tab === 'preview' ? 'PREVIEW' : 'HEADERS'}
               </button>
             ))}
+          </div>
+
+          {/* Compact Telemetry Badges */}
+          <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono select-none">
+            <div className="flex items-center gap-1.5 bg-[#07080A]/80 px-2 py-1 rounded border border-slate-800/60 leading-none">
+              <span className="text-slate-505 uppercase font-bold tracking-wider">Status:</span>
+              <span className={cn("font-black", isSuccess ? "text-emerald-400" : "text-rose-400")}>
+                {result.status}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#07080A]/80 px-2 py-1 rounded border border-slate-800/60 leading-none">
+              <span className="text-slate-505 uppercase font-bold tracking-wider">Time:</span>
+              <span className="font-black text-blue-400">{result.responseTime}ms</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#07080A]/80 px-2 py-1 rounded border border-slate-800/60 leading-none">
+              <span className="text-slate-505 uppercase font-bold tracking-wider">Req:</span>
+              <span className="font-black text-slate-350">{formattedReqSize}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#07080A]/80 px-2 py-1 rounded border border-slate-800/60 leading-none">
+              <span className="text-slate-505 uppercase font-bold tracking-wider">Res:</span>
+              <span className="font-black text-emerald-400/90">{formattedSize}</span>
+            </div>
           </div>
 
           {/* QA Quick Copy Helper */}
@@ -1970,9 +2117,11 @@ function ResponseViewer({
           </button>
         </div>
       </div>
-      </div>
 
-      <div className="flex-1 overflow-auto p-6 font-mono text-xs leading-relaxed custom-scrollbar selection:bg-emerald-500/20 text-emerald-500/90">
+      <div 
+        style={{ height: `${responseBoxHeight}px` }}
+        className="overflow-auto p-6 font-mono text-xs leading-relaxed custom-scrollbar selection:bg-emerald-500/20 text-emerald-500/90"
+      >
         {result.error && activeResTab !== 'headers' && activeResTab !== 'raw' && activeResTab !== 'result' ? (
            <div className="text-rose-400 bg-rose-500/5 p-6 rounded border border-rose-500/10 backdrop-blur-sm">
              <div className="text-[11px] font-black mb-4 uppercase tracking-[0.2em] opacity-80 flex items-center gap-3">
@@ -2127,6 +2276,13 @@ function ResponseViewer({
            </div>
         )}
       </div>
+      <div 
+        onMouseDown={startResizeResponse}
+        className="h-2 hover:h-2 bg-[#11141A] border-t border-slate-900 hover:bg-emerald-500 cursor-row-resize flex items-center justify-center transition-all group z-10 shrink-0"
+        title="Drag down to resize Response box"
+      >
+        <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-emerald-350 rounded" />
+      </div>
     </div>
   );
 }
@@ -2181,6 +2337,211 @@ function JsonPretty({ data, level = 0 }: { data: any, level?: number }) {
    return <span>{String(data)}</span>;
 }
 
+interface NetworkLogViewerProps {
+  results: CurlResult[];
+  loading: boolean;
+  onAbort: () => void;
+  theme?: 'dark' | 'light';
+  activeTabId: string;
+  onClearLogs: () => void;
+}
+
+function NetworkLogViewer({ 
+  results, 
+  loading, 
+  onAbort, 
+  theme = 'dark', 
+  activeTabId,
+  onClearLogs
+}: NetworkLogViewerProps) {
+  const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
+
+  // Sync selectedResult state with activeTab changes and new runs
+  useEffect(() => {
+    if (results && results.length > 0) {
+      const exists = selectedResult && results.some(r => r.id === selectedResult.id);
+      if (!exists) {
+        setSelectedResult(results[results.length - 1]);
+      }
+    } else {
+      setSelectedResult(null);
+    }
+  }, [results.length, activeTabId]);
+
+  // Handle empty list states elegantly
+  if (results.length === 0) {
+    if (loading) {
+      return (
+        <ResponseViewer 
+          result={null} 
+          loading={true} 
+          onAbort={onAbort} 
+          theme={theme} 
+        />
+      );
+    }
+    return (
+      <ResponseViewer 
+        result={null} 
+        loading={false} 
+        onAbort={onAbort} 
+        theme={theme} 
+      />
+    );
+  }
+
+  return (
+    <div className="flex-grow flex flex-col lg:flex-row h-full bg-[#07080A] text-slate-300 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/65 overflow-hidden font-sans">
+      
+      {/* LHS Panel: Browser-like compact transaction logs */}
+      <div className={cn("flex flex-col h-full bg-black overflow-hidden transition-all duration-300", selectedResult ? "w-full lg:w-[45%]" : "w-full")}>
+        <div className="px-5 py-2.5 border-b border-slate-900 bg-black/40 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Activity size={12} className="text-emerald-500 animate-pulse" />
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">TRANSACTIONS ({results.length})</span>
+          </div>
+          <div className="flex items-center gap-3 font-semibold pb-0.5">
+            <button
+              onClick={onClearLogs}
+              className="text-[8.5px] font-mono text-slate-400 hover:text-rose-400 uppercase flex items-center gap-1 transition-colors cursor-pointer font-bold border border-slate-800/65 bg-slate-900/40 px-2 py-0.5 rounded"
+              type="button"
+            >
+              <Trash2 size={10} /> CLEAR
+            </button>
+            <span className="text-[8px] font-mono text-slate-700 tracking-tighter uppercase mb-px font-bold">RETAIN: 50</span>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 px-4 custom-scrollbar space-y-1.5 bg-[#07080A]/40">
+          <AnimatePresence initial={false}>
+            {/* Display chronological list, first hit at the top, latest hit at bottom */}
+            {results.slice(-50).map((res, i) => {
+              const totalItems = results.length;
+              const sliceOffset = totalItems > 50 ? totalItems - 50 : 0;
+              const currentIdx = sliceOffset + i + 1;
+              const rt = res.responseTime;
+              const isSelected = selectedResult?.id === res.id;
+              const isSuccess = res.status >= 200 && res.status < 300;
+
+              // Size computation
+              const bodyLength = res.body ? res.body.length : 0;
+              const formattedSize = bodyLength > 1024 
+                ? `${(bodyLength / 1024).toFixed(1)} KB` 
+                : `${bodyLength} B`;
+
+              // Extract readable Path
+              const method = (res.config?.method || 'GET').toUpperCase();
+              let pathStr = '';
+              try {
+                const urlObj = new URL(res.config?.url || '');
+                pathStr = urlObj.pathname + urlObj.search;
+              } catch {
+                pathStr = res.config?.url || '';
+              }
+              const displayPath = pathStr.length > 28 ? pathStr.slice(0, 26) + '...' : pathStr;
+
+              return (
+                <motion.div 
+                  key={res.id}
+                  initial={{ x: -10, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  onClick={() => setSelectedResult(res)}
+                  className={cn(
+                    "group flex border-l-2 py-2 px-3 transition-all cursor-pointer items-center min-h-[36px] gap-3 rounded-r",
+                    isSelected 
+                      ? "border-emerald-500 bg-emerald-500/5 text-white" 
+                      : "border-slate-800 hover:border-slate-600 hover:bg-white/5 text-slate-400"
+                  )}
+                >
+                  <span className="text-slate-600 text-[9px] font-mono w-5 shrink-0">#{currentIdx}</span>
+                  
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className={cn(
+                      "text-[8px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wider font-mono",
+                      method === 'GET' ? 'bg-sky-500/10 text-sky-455 border" border-sky-500/15' :
+                      method === 'POST' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' :
+                      method === 'PUT' ? 'bg-amber-500/10 text-amber-400 border border-amber-550/15' :
+                      method === 'DELETE' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/15' :
+                      'bg-slate-500/10 text-slate-400 border border-slate-500/15'
+                    )}>
+                      {method}
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-350 truncate tracking-tight" title={res.config?.url}>
+                      {displayPath}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 font-mono shrink-0 text-[10px]">
+                    <span className={cn("font-black text-[10px] w-8 text-right", isSuccess ? "text-emerald-400" : "text-rose-400")}>
+                      {res.status !== 0 ? res.status : 'ERR'}
+                    </span>
+                    <span className="text-blue-400 font-bold w-12 text-right">{rt}ms</span>
+                    <span className="text-slate-550 w-11 text-right text-[9px]">{formattedSize}</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+            {/* Pulsing Pending Line at bottom of logs queue while fetching next result */}
+            {loading && (
+              <motion.div 
+                key="pending"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group flex border-l-2 border-amber-550 bg-amber-500/5 py-2 px-3 items-center min-h-[36px] gap-3 rounded-r text-amber-400/80"
+              >
+                <span className="text-slate-600 text-[9px] font-mono w-5 shrink-0">#{results.length + 1}</span>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="bg-amber-500/10 text-amber-500 border border-amber-500/15 text-[8px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wide animate-pulse font-mono">
+                    SEND
+                  </span>
+                  <span className="font-mono text-[10px] text-amber-405/60 truncate tracking-tight animate-pulse">
+                    Requesting transmission...
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <RefreshCw size={10} className="text-amber-500 animate-spin" />
+                  <span className="text-[9px] font-mono text-amber-400/50">PENDING</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* RHS Panel: Inspected Response viewer detail */}
+      {selectedResult && (
+        <div className="flex-1 flex flex-col h-full bg-black relative">
+          <div className="p-2 px-4 border-b border-slate-900 bg-[#0F1115] flex items-center justify-between shrink-0 font-sans">
+            <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => setSelectedResult(null)}
+                 className="text-[9px] font-mono text-emerald-500 hover:text-emerald-450 font-bold uppercase tracking-widest flex items-center gap-2 cursor-pointer transition-colors"
+               >
+                 <X size={11} /> CLOSE_DETAIL
+               </button>
+               <span className="w-px h-3 bg-slate-800/80 mx-1"></span>
+               <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tight">
+                 TRANSACTION_DETAIL #{results.findIndex(r => r.id === selectedResult.id) + 1}
+               </span>
+            </div>
+          </div>
+          
+          <div className="flex-grow overflow-y-auto no-scrollbar bg-black">
+            <ResponseViewer 
+              result={selectedResult} 
+              loading={false} 
+              onAbort={onAbort} 
+              theme={theme} 
+              defaultTab="response"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }: { results: CurlResult[], progress: ProgressUpdate | null, concurrency: number, onAbort: () => void, theme?: 'dark' | 'light' }) {
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
   const successCount = results.filter(r => r.status >= 200 && r.status < 300).length;
@@ -2203,48 +2564,6 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
     <div className="flex flex-col lg:flex-row h-full bg-black text-slate-300 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/60 overflow-hidden">
       {/* Panel 1: STREAM_ORCHESTRATOR & Telemetry Logs */}
       <div className={cn("flex flex-col h-full bg-black overflow-hidden transition-all duration-300", selectedResult ? "w-full lg:w-[48%]" : "w-full")}>
-        {/* Banner above STREAM_ORCHESTRATOR with Last Transmission details */}
-        {results.length > 0 && (() => {
-          const lastRes = results[results.length - 1];
-          const isSuccess = lastRes.status >= 200 && lastRes.status < 300;
-          const bodyLength = lastRes.body ? lastRes.body.length : 0;
-          const formattedSize = bodyLength > 1024 
-            ? `${(bodyLength / 1024).toFixed(1)} KB` 
-            : `${bodyLength} B`;
-          const reqLength = lastRes.requestSize !== undefined ? lastRes.requestSize : 0;
-          const formattedReqSize = reqLength > 1024
-            ? `${(reqLength / 1024).toFixed(1)} KB`
-            : `${reqLength} B`;
-
-          return (
-            <div className="px-5 py-2 px-6 bg-emerald-500/5 border-b border-slate-900 flex flex-wrap items-center justify-between gap-4 font-mono text-[9px] shrink-0">
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-extrabold tracking-wider">HTTP_STATUS</span>
-                  <span className={cn("font-bold flex items-center gap-1 px-1 py-0.5 rounded text-[10px]", isSuccess ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15" : "bg-rose-500/10 text-rose-400 border border-rose-500/15")}>
-                    {lastRes.status} {isSuccess ? 'OK' : 'ERR'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-extrabold tracking-wider">RESPONSE_TIME</span>
-                  <span className="text-blue-400 font-bold text-[10px]">{lastRes.responseTime}ms</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-extrabold tracking-wider">REQ_SIZE</span>
-                  <span className="text-slate-300 font-bold text-[10px]">{formattedReqSize}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-extrabold tracking-wider">DATA_SIZE</span>
-                  <span className="text-slate-300 font-bold text-[10px]">{formattedSize}</span>
-                </div>
-              </div>
-              <div className="text-[7.5px] text-slate-600 font-black uppercase tracking-[0.2em] hidden sm:block">
-                LAST_TRANSMISSION
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Header of STREAM_ORCHESTRATOR */}
         <div className="p-5 p-6 border-b border-slate-900 bg-[#0F1115] shrink-0 space-y-4">
           <div className="flex items-center justify-between">
@@ -2384,14 +2703,20 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
               {[...results].slice(-50).reverse().map((res, i) => {
                 const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : results.length - i;
                 const rt = res.responseTime;
-                const tag = rt < 150 
-                  ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
-                  : rt < 450 
-                    ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
-                    : rt < 1000 
-                      ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-405 border border-amber-500/20' }
-                      : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-400 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
                 const isSelected = selectedResult?.id === res.id;
+
+                const bodyLength = res.body ? res.body.length : 0;
+                const formattedSize = bodyLength > 1024 
+                  ? `${(bodyLength / 1024).toFixed(1)} KB` 
+                  : `${bodyLength} B`;
+
+                const reqLength = res.requestSize !== undefined ? res.requestSize : 0;
+                const formattedReqSize = reqLength > 1024
+                  ? `${(reqLength / 1024).toFixed(1)} KB`
+                  : `${reqLength} B`;
+
+                const isSuccess = res.status >= 200 && res.status < 300;
+
                 return (
                   <motion.div 
                     key={res.id}
@@ -2399,24 +2724,29 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
                     animate={{ x: 0, opacity: 1 }}
                     onClick={() => setSelectedResult(res)}
                     className={cn(
-                      "group flex border-l-[2px] py-1.5 pl-4 transition-all cursor-pointer items-center min-h-[32px] gap-2 rounded-r",
+                      "group flex border-l-[2px] py-2.5 pl-4 transition-all cursor-pointer items-center min-h-[44px] gap-4 rounded-r",
                       isSelected 
-                        ? "border-emerald-500 bg-emerald-500/5" 
+                        ? "border-emerald-500 bg-emerald-500/5 text-white" 
                         : "border-slate-800 hover:border-white hover:bg-white/5"
                     )}
                   >
-                    <span className="text-slate-500 text-[10px] font-bold w-10 shrink-0">#{currentIdx}</span>
-                    <span className="text-slate-350 w-16 shrink-0 font-mono text-[9px] font-black">➔ {rt}ms</span>
-                    <span className={cn("w-14 font-black text-[10px]", res.status < 300 ? "text-emerald-500" : "text-rose-500")}>
-                      [{res.status}]
-                    </span>
-                    <span className="text-slate-500 flex-1 truncate uppercase tracking-tighter font-mono group-hover:text-white transition-colors text-[9px]">
-                      REQ::{res.id.split('-').pop()}
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={cn("text-[8px] font-black tracking-wider px-2 py-0.5 rounded uppercase font-mono border", tag.color)}>
-                        {tag.label}
-                      </span>
+                    <span className="text-slate-550 text-[10px] font-bold w-8 shrink-0">#{currentIdx}</span>
+                    <div className="flex-1 flex flex-wrap items-center gap-5 sm:gap-6">
+                      <div className="flex flex-col min-w-[70px]">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">HTTP_STATUS</span>
+                        <span className={cn("text-[14px] font-black tracking-tight flex items-center gap-1.5 leading-none mt-0.5", theme === 'light' ? "text-black" : "text-white")}>
+                          {res.status} 
+                          <span className={cn("text-[8px] px-1 py-0.5 rounded font-black tracking-wider uppercase leading-none", isSuccess ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20")}>
+                            {isSuccess ? 'OK' : 'ERR'}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex flex-col min-w-[75px]">
+                        <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-tighter">RESPONSE_TIME</span>
+                        <span className={cn("text-[14px] font-black font-mono leading-none mt-0.5", theme === 'light' ? "text-black" : "text-white")}>
+                          {rt}<span className="text-[9px] text-blue-500 font-bold ml-0.5">ms</span>
+                        </span>
+                      </div>
                     </div>
                   </motion.div>
                 );
@@ -2458,7 +2788,7 @@ function BatchViewer({ results, progress, concurrency, onAbort, theme = 'dark' }
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            <ResponseViewer result={selectedResult} loading={false} onAbort={() => {}} theme={theme} defaultTab="headers" />
+            <ResponseViewer result={selectedResult} loading={false} onAbort={() => {}} theme={theme} defaultTab="response" />
           </div>
         </div>
       )}

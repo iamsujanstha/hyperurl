@@ -1988,21 +1988,41 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                              </div>
                            )}
 
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="bg-black/50 p-3 rounded-lg border border-slate-800">
-                                <div className="text-slate-400 text-[10px] uppercase tracking-wider mb-1 font-bold">Status Code</div>
-                                <div className={cn("text-lg font-black flex items-center justify-between", selectedResult.status < 300 ? "text-emerald-400" : "text-rose-400")}>
-                                  <span>{selectedResult.status}</span>
-                                  {(selectedResult as any).retriesApplied !== undefined && (
-                                    <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-550/20 tracking-wider">
-                                      {(selectedResult as any).retriesApplied} Retries
+                          {/* Compact Telemetry Dashboard */}
+                          <div className="grid grid-cols-4 gap-2 bg-[#090B0E] p-2.5 rounded-lg border border-slate-800/80">
+                             <div className="flex flex-col justify-between py-1 px-2 border-r border-slate-800/60 last:border-0">
+                                <span className="text-slate-500 text-[9px] uppercase font-black tracking-wider block">Status</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className={cn("text-xs font-black font-mono", selectedResult.status < 300 ? "text-emerald-400" : "text-rose-400")}>
+                                    {selectedResult.status}
+                                  </span>
+                                  {(selectedResult as any).retriesApplied !== undefined && (selectedResult as any).retriesApplied > 0 && (
+                                    <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 px-1 rounded border border-amber-550/20" title={`${(selectedResult as any).retriesApplied} retries applied`}>
+                                      R:{(selectedResult as any).retriesApplied}
                                     </span>
                                   )}
                                 </div>
                              </div>
-                             <div className="bg-black/50 p-3 rounded-lg border border-slate-800">
-                                <div className="text-slate-400 text-[10px] uppercase tracking-wider mb-1 font-bold">Latency</div>
-                                <div className="text-lg font-black text-blue-400">{selectedResult.responseTime}ms</div>
+                             <div className="flex flex-col justify-between py-1 px-2 border-r border-slate-800/60 last:border-0">
+                                <span className="text-slate-500 text-[9px] uppercase font-black tracking-wider block">Latency</span>
+                                <span className="text-xs font-black font-mono text-blue-400 mt-0.5">{selectedResult.responseTime}ms</span>
+                             </div>
+                             <div className="flex flex-col justify-between py-1 px-2 border-r border-slate-800/60 last:border-0">
+                                <span className="text-slate-500 text-[9px] uppercase font-black tracking-wider block">Req Size</span>
+                                <span className="text-xs font-black font-mono text-slate-300 mt-0.5">
+                                  {selectedResult.requestSize !== undefined && selectedResult.requestSize > 0 ? (
+                                    selectedResult.requestSize > 1024 ? `${(selectedResult.requestSize / 1024).toFixed(1)} KB` : `${selectedResult.requestSize} B`
+                                  ) : '0 B'}
+                                </span>
+                             </div>
+                             <div className="flex flex-col justify-between py-1 px-2 last:border-0">
+                                <span className="text-slate-505 text-[9px] uppercase font-black tracking-wider block">Res Size</span>
+                                <span className="text-xs font-black font-mono text-emerald-500/95 mt-0.5">
+                                  {(() => {
+                                    const bodyLen = selectedResult.body ? selectedResult.body.length : 0;
+                                    return bodyLen > 1024 ? `${(bodyLen / 1024).toFixed(1)} KB` : `${bodyLen} B`;
+                                  })()}
+                                </span>
                              </div>
                           </div>
 

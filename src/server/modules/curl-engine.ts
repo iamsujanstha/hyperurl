@@ -25,6 +25,7 @@ export interface CurlResult {
   simulatedFlag?: string;
   simulatedRegion?: string;
   iterationIndex?: number;
+  config?: RequestConfig;
 }
 
 export class CurlEngine {
