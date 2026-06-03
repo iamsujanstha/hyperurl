@@ -6,6 +6,43 @@
   --color-brand-bg: #0F1115;
   --color-brand-accent: #1E293B;
   --color-brand-emerald: #10B981;
+
+  /* Custom enterprise shades mapped to prevent text-disappearance / compilation errors in Tailwind build */
+  --color-slate-105: #F1F5F9;
+  --color-slate-205: #E2E8F0;
+  --color-slate-350: #94A3B8;
+  --color-slate-355: #8A99AD;
+  --color-slate-405: #64748B;
+  --color-slate-450: #5C6B80;
+  --color-slate-505: #475569;
+  --color-slate-550: #334155;
+  --color-slate-705: #1E293B;
+  --color-slate-755: #1B2230;
+  --color-slate-805: #171D29;
+  --color-slate-850: #131721;
+  --color-slate-855: #11151F;
+  --color-slate-905: #0A0C13;
+  --color-slate-955: #05060A;
+
+  --color-emerald-405: #34D399;
+  --color-emerald-450: #10B981;
+  --color-emerald-455: #059669;
+  --color-emerald-950: #022C22;
+  --color-emerald-955: #011C15;
+  
+  --color-rose-450: #EF4444;
+  --color-rose-455: #DC2626;
+  --color-rose-950: #450A0A;
+  --color-rose-955: #2E0505;
+  
+  --color-blue-405: #60A5FA;
+  --color-blue-450: #3B82F6;
+  
+  --color-violet-450: #8B5CF6;
+  
+  --color-amber-405: #FBBF24;
+  --color-amber-450: #F59E0B;
+  --color-amber-505: #D97706;
 }
 
 @layer base {

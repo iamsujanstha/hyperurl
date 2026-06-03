@@ -9,9 +9,9 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { cn } from '../../../lib/utils';
-import { CurlResult } from '../../../server/modules/curl-engine';
-import { ProgressUpdate } from '../../../server/modules/runner';
+import { cn } from '@/lib/utils';
+import { CurlResult } from '@/server/modules/curl-engine';
+import { ProgressUpdate } from '@/server/modules/runner';
 import { ResponseViewer } from './ResponseViewer';
 
 interface BatchViewerProps {
@@ -224,37 +224,48 @@ export function BatchViewer({
                     className={cn(
                       "group flex border-l-2 py-2 px-3 transition-all cursor-pointer items-center min-h-[40px] gap-3 rounded-r",
                       isSelected 
-                        ? "border-emerald-500 bg-emerald-500/10 text-white" 
+                        ? "border-emerald-500 bg-emerald-500/15 text-white" 
                         : "border-slate-800 hover:border-slate-500 hover:bg-slate-900/40 text-slate-300"
                     )}
                     role="button"
                     aria-pressed={isSelected}
                     aria-label={`Iteration log ${originalIndex}: ${method} ${res.config?.url || 'N/A'}, status ${res.status !== 0 ? res.status : 'error'}`}
                   >
-                    <span className="text-slate-505 text-xs font-mono w-6 shrink-0">#{originalIndex}</span>
+                    <span className={cn(
+                      "text-xs font-mono w-6 shrink-0 transition-colors",
+                      isSelected ? "text-emerald-500 font-bold dark:text-emerald-350" : "text-slate-500"
+                    )}>
+                      #{originalIndex}
+                    </span>
                     
                     <div className="flex-1 min-w-0 flex items-center gap-2">
                       <span className={cn(
                         "text-[9px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wider font-mono border shrink-0",
-                        method === 'GET' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
-                        method === 'POST' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                        method === 'PUT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                        method === 'DELETE' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                        method === 'GET' ? 'bg-sky-500/10 text-sky-450 border-sky-500/20' :
+                        method === 'POST' ? 'bg-emerald-500/10 text-emerald-450 border-emerald-500/20' :
+                        method === 'PUT' ? 'bg-amber-500/10 text-amber-450 border-amber-500/20' :
+                        method === 'DELETE' ? 'bg-rose-500/10 text-rose-450 border-rose-500/20' :
                         'bg-slate-500/10 text-slate-400 border-slate-500/20'
                       )}>
                         {method}
                       </span>
-                      <span className="font-mono text-xs text-slate-355 truncate tracking-tight hover:text-white" title={res.config?.url}>
+                      <span className={cn(
+                        "font-mono text-xs truncate tracking-tight transition-colors",
+                        isSelected ? "text-slate-950 dark:text-white font-black" : "text-slate-400 group-hover:text-slate-200"
+                      )} title={res.config?.url}>
                         {displayPath}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-3 font-mono shrink-0 text-xs">
-                      <span className={cn("font-black text-xs w-8 text-right", isSuccess ? "text-emerald-400" : "text-rose-400")}>
+                      <span className={cn("font-black text-xs w-8 text-right", isSuccess ? "bg-emerald-500/10 px-1 py-0.5 rounded text-emerald-400" : "bg-rose-500/10 px-1 py-0.5 rounded text-rose-400")}>
                         {res.status !== 0 ? res.status : 'ERR'}
                       </span>
                       <span className="text-blue-400 font-bold w-14 text-right">{rt}ms</span>
-                      <span className="text-slate-450 w-12 text-right text-[11px] font-medium">{formattedSize}</span>
+                      <span className={cn(
+                        "w-12 text-right text-[11px] font-medium transition-colors",
+                        isSelected ? "text-slate-700 dark:text-slate-205 font-bold" : "text-slate-500"
+                      )}>{formattedSize}</span>
                     </div>
                   </motion.div>
                 );

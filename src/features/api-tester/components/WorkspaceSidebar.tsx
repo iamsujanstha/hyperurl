@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Terminal, Plus, ChevronLeft, Beaker, Sliders, History } from 'lucide-react';
-import { cn } from '../../../lib/utils';
+import { cn } from '@/lib/utils';
 
 interface WorkspaceSidebarProps {
   isSidebarCollapsed: boolean;

@@ -1,5 +1,5 @@
-import { RequestConfig, CurlResult } from '../../server/modules/curl-engine';
-import { ProgressUpdate } from '../../server/modules/runner';
+import { RequestConfig, CurlResult } from '@/server/modules/curl-engine';
+import { ProgressUpdate } from '@/server/modules/runner';
 
 export const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'GRAPHQL'] as const;
 

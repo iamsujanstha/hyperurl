@@ -1,4 +1,4 @@
-import { ApiTester } from './components/ApiTester';
+import { ApiTester } from '@/components/ApiTester';
 
 export default function App() {
   return (

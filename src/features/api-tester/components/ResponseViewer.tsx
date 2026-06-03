@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Terminal, Copy, AlertTriangle, Layout, Activity, Info, RefreshCw, FileJson } from 'lucide-react';
-import { cn } from '../../../lib/utils';
-import { CurlResult } from '../../../server/modules/curl-engine';
+import { cn } from '@/lib/utils';
+import { CurlResult } from '@/server/modules/curl-engine';
 import { JsonInteractiveNode } from './JsonInteractiveNode';
 import { JsonPretty } from './JsonPretty';
 

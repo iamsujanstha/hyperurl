@@ -1,21 +1,21 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
-import {
-  Terminal,
-  Zap,
-  Play,
-  RefreshCw,
-  Save,
-  Copy,
-  List,
-  FileJson,
-  Database,
+import { 
+  Terminal, 
+  Zap, 
+  Play, 
+  RefreshCw, 
+  Save, 
+  Copy, 
+  List, 
+  FileJson, 
+  Database, 
   Layers,
   Plus
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { cn } from '../../../lib/utils';
-import { Tab, Collection } from '../types';
+import { cn } from '@/lib/utils';
+import { Tab, Collection } from '@/features/api-tester/types';
 import { HeaderRow } from './HeaderRow';
 import { BatchViewer } from './BatchViewer';
 import { NetworkLogViewer } from './NetworkLogViewer';
@@ -32,7 +32,7 @@ interface ApiClientWorkspaceProps {
   handleRun: () => void;
   getResolvedConfig: (tab: Tab) => any;
   showCustomAlert: (title: string, message: string) => void;
-
+  
   splitPercent: number;
   setIsDraggingSplit: (dragging: boolean) => void;
   theme: 'dark' | 'light';
@@ -40,7 +40,7 @@ interface ApiClientWorkspaceProps {
   graphqlQueryHeight: number;
   graphqlVariablesHeight: number;
   payloadJsonHeight: number;
-
+  
   startResizeQuery: (e: React.MouseEvent) => void;
   startResizeVariables: (e: React.MouseEvent) => void;
   startResizePayloadJson: (e: React.MouseEvent) => void;
@@ -56,7 +56,7 @@ export function ApiClientWorkspace({
   handleRun,
   getResolvedConfig,
   showCustomAlert,
-
+  
   splitPercent,
   setIsDraggingSplit,
   theme,
@@ -70,19 +70,19 @@ export function ApiClientWorkspace({
   startResizePayloadJson
 }: ApiClientWorkspaceProps) {
   const resolvedWidthStyle = useMemo(() => {
-    return typeof window !== 'undefined' && window.innerWidth >= 1024
-      ? { width: `${splitPercent}%` }
+    return typeof window !== 'undefined' && window.innerWidth >= 1024 
+      ? { width: `${splitPercent}%` } 
       : { width: '100%' };
   }, [splitPercent]);
 
   const resolvedRightWidthStyle = useMemo(() => {
-    return typeof window !== 'undefined' && window.innerWidth >= 1024
-      ? { width: `${100 - splitPercent}%` }
+    return typeof window !== 'undefined' && window.innerWidth >= 1024 
+      ? { width: `${100 - splitPercent}%` } 
       : { width: '100%' };
   }, [splitPercent]);
 
   return (
-    <motion.div
+    <motion.div 
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -5 }}
@@ -90,7 +90,7 @@ export function ApiClientWorkspace({
       className="absolute inset-0 flex flex-col lg:flex-row gap-0 overflow-hidden font-sans"
     >
       {/* LHS: Request Config Panel */}
-      <div
+      <div 
         style={resolvedWidthStyle}
         className="w-full lg:w-auto lg:flex-none border-r border-slate-850 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar"
       >
@@ -127,9 +127,9 @@ export function ApiClientWorkspace({
               <Zap size={12} className={activeTab.config.method === 'GRAPHQL' ? "text-violet-400 animate-pulse" : "text-slate-505"} /> GraphQL Playground
             </button>
           </div>
-
+          
           {/* Main URL Bar, dropdown and execution controls */}
-          <div className="flex gap-0 rounded-lg bg-brand-bg overflow-hidden transition-all border border-slate-900 focus-within:border-emerald-500/35">
+          <div className="flex gap-0 rounded-lg bg-[#0F1115] overflow-hidden transition-all border border-slate-900 focus-within:border-emerald-500/35">
             <select
               value={activeTab.config.method}
               onChange={(e) => updateActiveConfig({ method: e.target.value as any })}
@@ -163,7 +163,7 @@ export function ApiClientWorkspace({
 
           <div className="flex items-center justify-between pt-1 pb-1 select-none font-sans">
             <div className="flex items-center gap-3">
-              <button
+              <button 
                 type="button"
                 onClick={saveToCollection}
                 className="px-3 py-1.5 bg-[#0F1115] hover:bg-slate-900 rounded-lg text-xs font-bold font-mono text-[#94A3B8] hover:text-white flex items-center gap-2 uppercase transition-all shadow-sm active:scale-95 cursor-pointer"
@@ -191,7 +191,7 @@ export function ApiClientWorkspace({
               })}
             </div>
             <div className="flex items-center gap-3">
-              <button
+              <button 
                 type="button"
                 onClick={() => updateActiveTab({ showCurl: !activeTab.showCurl })}
                 className={cn(
@@ -202,11 +202,11 @@ export function ApiClientWorkspace({
                 <Terminal size={12} /> {activeTab.showCurl ? 'HIDE_CURL' : 'SHOW_CURL'}
               </button>
               <div className="h-4 w-px bg-slate-900/80"></div>
-              <button
+              <button 
                 type="button"
                 onClick={() => {
                   const resolved = getResolvedConfig(activeTab);
-                  const curlMessage = `curl -X ${resolved.method} "${resolved.url}" ${Object.entries(resolved.headers).map(([k, v]) => `-H "${k}: ${v}"`).join(' ')} ${resolved.body ? `-d '${resolved.body}'` : ''}`;
+                  const curlMessage = `curl -X ${resolved.method} "${resolved.url}" ${Object.entries(resolved.headers).map(([k,v]) => `-H "${k}: ${v}"`).join(' ')} ${resolved.body ? `-d '${resolved.body}'` : ''}`;
                   navigator.clipboard.writeText(curlMessage);
                 }}
                 className="text-xs font-bold font-mono text-slate-500 hover:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider cursor-pointer"
@@ -232,13 +232,13 @@ export function ApiClientWorkspace({
                   if (isGraphql && !finalHeaders['Content-Type']) {
                     finalHeaders['Content-Type'] = 'application/json';
                   }
-
+                  
                   const headerString = Object.entries(finalHeaders)
-                    .map(([k, v]) => `-H "${k}: ${v}"`)
+                    .map(([k,v]) => `-H "${k}: ${v}"`)
                     .join(' ');
-
+                    
                   const baseCurl = `curl -X ${method} "${resolved.url}" ${headerString} ${resolved.body ? `-d '${resolved.body.replace(/'/g, "'\\''")}'` : ''}`;
-
+                  
                   if (activeTab.batchMode) {
                     const iters = activeTab.batchIterations || 10;
                     const threads = activeTab.batchConcurrency || 5;
@@ -297,9 +297,9 @@ export function ApiClientWorkspace({
           <section className="space-y-3.5">
             <div className="flex items-center justify-between select-none font-sans">
               <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 font-bold select-none">
-                <List size={12} className="text-emerald-500 animate-pulse" /> Headers_Matrix
+                 <List size={12} className="text-emerald-500 animate-pulse" /> Headers_Matrix
               </label>
-              <button
+              <button 
                 type="button"
                 onClick={() => updateActiveTab({ headersList: [...activeTab.headersList, { id: uuidv4(), key: '', value: '' }] })}
                 className="text-emerald-400 hover:text-white transition-colors p-1.5 bg-[#12161F] hover:bg-slate-900 rounded-lg shadow-sm active:scale-90 cursor-pointer"
@@ -335,17 +335,17 @@ export function ApiClientWorkspace({
             <section className="space-y-3 pt-1">
               <div className="flex items-center justify-between select-none">
                 <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 font-bold font-sans">
-                  <FileJson size={12} className="text-emerald-500 animate-pulse" /> Payload_JSON
+                   <FileJson size={12} className="text-emerald-500 animate-pulse" /> Payload_JSON
                 </label>
-                <button
+                <button 
                   type="button"
                   onClick={() => {
-                    try {
-                      const parsedObj = JSON.parse(activeTab.config.body || '');
-                      updateActiveConfig({ body: JSON.stringify(parsedObj, null, 2) });
-                    } catch (e) {
-                      showCustomAlert('INVALID JSON', 'Malformed syntax in request payload. Check formatting strings.');
-                    }
+                     try {
+                       const parsedObj = JSON.parse(activeTab.config.body || '');
+                       updateActiveConfig({ body: JSON.stringify(parsedObj, null, 2) });
+                     } catch (e) {
+                       showCustomAlert('INVALID JSON', 'Malformed syntax in request payload. Check formatting strings.');
+                     }
                   }}
                   className="text-xs font-bold font-mono text-slate-500 hover:text-emerald-400 uppercase transition-colors cursor-pointer"
                 >
@@ -359,7 +359,7 @@ export function ApiClientWorkspace({
                   className="w-full flex-1 bg-slate-950/40 border border-slate-900/60 rounded-t-lg p-4 font-mono text-xs text-emerald-400/90 outline-none resize-none focus:border-emerald-500/30 leading-relaxed shadow-inner"
                   placeholder='{ "key": "value" }'
                 />
-                <div
+                <div 
                   onMouseDown={startResizePayloadJson}
                   className="h-2 hover:h-2.5 bg-[#12161E] cursor-row-resize flex items-center justify-center transition-all group z-10 rounded-b-lg shrink-0 border-t border-slate-950"
                   title="Drag down to resize Payload JSON box"
@@ -388,7 +388,7 @@ export function ApiClientWorkspace({
                     className="w-full flex-1 bg-transparent p-4 font-mono text-[11.5px] text-violet-400/90 outline-none resize-none leading-relaxed"
                   />
                   {/* Draggable Query Divider */}
-                  <div
+                  <div 
                     onMouseDown={startResizeQuery}
                     className="h-1 bg-slate-950 hover:bg-violet-500 cursor-row-resize flex items-center justify-center transition-all group z-10 shrink-0 border-b border-slate-900/60"
                     title="Drag down to resize Query box"
@@ -401,15 +401,15 @@ export function ApiClientWorkspace({
                     <span className="text-[10px] uppercase font-black text-blue-400 tracking-widest flex items-center gap-2 font-mono">
                       <Database size={11} className="text-blue-500" /> Variables_JSON
                     </span>
-                    <button
+                    <button 
                       type="button"
                       onClick={() => {
-                        try {
-                          const parsedObj = JSON.parse(activeTab.graphqlVariables || '{}');
-                          updateActiveTab({ graphqlVariables: JSON.stringify(parsedObj, null, 2) });
-                        } catch (e) {
-                          showCustomAlert('INVALID JSON', 'Malformed syntax in GraphQL variables detector. Ensure keys and values are properly quoted.');
-                        }
+                         try {
+                           const parsedObj = JSON.parse(activeTab.graphqlVariables || '{}');
+                           updateActiveTab({ graphqlVariables: JSON.stringify(parsedObj, null, 2) });
+                         } catch (e) {
+                           showCustomAlert('INVALID JSON', 'Malformed syntax in GraphQL variables detector. Ensure keys and values are properly quoted.');
+                         }
                       }}
                       className="text-[9px] font-bold font-mono text-slate-500 hover:text-blue-400 uppercase transition-colors cursor-pointer"
                     >
@@ -423,7 +423,7 @@ export function ApiClientWorkspace({
                     className="w-full flex-1 bg-transparent p-4 font-mono text-[11.5px] text-blue-400/90 outline-none resize-none leading-relaxed"
                   />
                   {/* Draggable Variables resizer at bottom */}
-                  <div
+                  <div 
                     onMouseDown={startResizeVariables}
                     className="h-1 bg-slate-950 hover:bg-blue-500 cursor-row-resize flex items-center justify-center transition-all group z-10 shrink-0"
                     title="Drag down to resize Variables box"
@@ -436,7 +436,7 @@ export function ApiClientWorkspace({
       </div>
 
       {/* Vertical split draggable slider resizer bar */}
-      <div
+      <div 
         onMouseDown={() => setIsDraggingSplit(true)}
         className="hidden lg:flex w-1.5 hover:w-1.5 bg-[#12161E] hover:bg-emerald-500 cursor-col-resize items-center justify-center transition-all shrink-0 border-x border-slate-850 group z-20"
         title="Drag left or right to resize panels"
@@ -445,16 +445,16 @@ export function ApiClientWorkspace({
       </div>
 
       {/* RHS output viewer wrapper */}
-      <div
+      <div 
         style={resolvedRightWidthStyle}
         className="w-full lg:w-auto lg:flex-1 flex flex-col bg-black overflow-hidden border-t lg:border-t-0 border-slate-850"
       >
         {activeTab.batchMode ? (
-          <BatchViewer
-            results={activeTab.batchResults}
-            progress={activeTab.progress}
-            concurrency={activeTab.batchConcurrency || 5}
-            onAbort={handleAbort}
+          <BatchViewer 
+            results={activeTab.batchResults} 
+            progress={activeTab.progress} 
+            concurrency={activeTab.batchConcurrency || 5} 
+            onAbort={handleAbort} 
             theme={theme}
           />
         ) : (

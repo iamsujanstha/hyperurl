@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sun, Moon, ChevronDown } from 'lucide-react';
-import { cn } from '../../../lib/utils';
-import { Telemetry } from '../types';
+import { cn } from '@/lib/utils';
+import { Telemetry } from '@/features/api-tester/types';
 
 interface WorkspaceNavbarProps {
   view: 'debugger' | 'lab' | 'variables' | 'history';

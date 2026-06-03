@@ -5,9 +5,9 @@ import {
   Play, Info, Settings2, BarChart4, Terminal, X, RefreshCw, Layout, 
   Beaker, ChevronDown, ChevronUp, Sparkles, Copy, Code2, Globe, Server, Hash, Clock, Plus, Trash2, List, ShieldAlert, FileJson
 } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { RequestConfig, CurlResult } from '../server/modules/curl-engine';
-import { ProgressUpdate } from '../server/modules/runner';
+import { cn } from '@/lib/utils';
+import { RequestConfig, CurlResult } from '@/server/modules/curl-engine';
+import { ProgressUpdate } from '@/server/modules/runner';
 
 export type TestModuleId = 'basic_query' | 'blast' | 'race' | 'replay' | 'load' | 'chaos' | 'fuzzer' | 'security_audit' | 'distributed';
 

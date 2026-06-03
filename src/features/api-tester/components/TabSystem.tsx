@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, X } from 'lucide-react';
-import { cn } from '../../../lib/utils';
-import { Tab } from '../types';
+import { cn } from '@/lib/utils';
+import { Tab } from '@/features/api-tester/types';
 
 interface TabSystemProps {
   tabs: Tab[];

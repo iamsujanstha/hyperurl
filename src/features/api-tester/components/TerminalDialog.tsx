@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Terminal, X } from 'lucide-react';
-import { DialogState, Collection } from '../types';
+import { DialogState, Collection } from '@/features/api-tester/types';
 
 interface TerminalDialogProps {
   dialog: DialogState;

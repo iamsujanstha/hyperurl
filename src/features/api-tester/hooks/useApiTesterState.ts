@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { RequestConfig, CurlResult } from '../../../server/modules/curl-engine';
-import { ProgressUpdate } from '../../../server/modules/runner';
-import { Tab, Collection, SavedRequest, Telemetry, DialogState } from '../types';
+import { RequestConfig, CurlResult } from '@/server/modules/curl-engine';
+import { ProgressUpdate } from '@/server/modules/runner';
+import { Tab, Collection, SavedRequest, Telemetry, DialogState } from '@/features/api-tester/types';
 
 export function useApiTesterState(initialVariables: Record<string, string> = {}) {
   // Persistence Keys

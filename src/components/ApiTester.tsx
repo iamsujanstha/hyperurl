@@ -1,11 +1,11 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { cn } from '../lib/utils';
-import { TestLab } from './TestLab';
-import { VariablesManager } from './VariablesManager';
+import { cn } from '@/lib/utils';
+import { TestLab } from '@/components/TestLab';
+import { VariablesManager } from '@/components/VariablesManager';
 
 // Import refactored domain components & hooks
-import {
+import { 
   useApiTesterState,
   WorkspaceSidebar,
   WorkspaceNavbar,
@@ -14,7 +14,7 @@ import {
   WorkerPoolPopover,
   TerminalDialog,
   HistoryList
-} from '../features/api-tester';
+} from '@/features/api-tester';
 
 export function ApiTester({ variables: initialVariables = {} }: { variables?: Record<string, string> }) {
   const {
@@ -67,7 +67,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
   return (
     <div className={cn("flex bg-[#0B0D11] h-screen text-slate-300 overflow-hidden font-sans select-none", theme === 'light' && "theme-light")}>
       {/* 1. Collapsible Sidebar */}
-      <WorkspaceSidebar
+      <WorkspaceSidebar 
         isSidebarCollapsed={isSidebarCollapsed}
         setIsSidebarCollapsed={setIsSidebarCollapsed}
         view={view}
@@ -78,7 +78,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       {/* 2. Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-[#0B0D11] relative">
         {/* Top Navbar */}
-        <WorkspaceNavbar
+        <WorkspaceNavbar 
           view={view}
           theme={theme}
           setTheme={setTheme}
@@ -88,7 +88,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         />
 
         {/* Worker Pool Floating Popover Dashboard */}
-        <WorkerPoolPopover
+        <WorkerPoolPopover 
           isOpen={isWorkerPoolOpen}
           onClose={() => setIsWorkerPoolOpen(false)}
           telemetry={telemetry}
@@ -97,7 +97,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
 
         {/* Tab Selection Header Bar */}
         {(view === 'debugger' || view === 'lab') && (
-          <TabSystem
+          <TabSystem 
             tabs={tabs}
             activeTabId={activeTabId}
             setActiveTabId={setActiveTabId}
@@ -110,7 +110,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         <div className="flex-1 overflow-hidden relative">
           <AnimatePresence mode="wait">
             {view === 'debugger' && (
-              <ApiClientWorkspace
+              <ApiClientWorkspace 
                 activeTab={activeTab}
                 activeTabId={activeTabId}
                 updateActiveTab={updateActiveTab}
@@ -120,7 +120,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 handleRun={handleRun}
                 getResolvedConfig={getResolvedConfig}
                 showCustomAlert={showCustomAlert}
-
+                
                 splitPercent={splitPercent}
                 setIsDraggingSplit={setIsDraggingSplit}
                 theme={theme}
@@ -136,7 +136,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
             )}
 
             {view === 'lab' && (
-              <motion.div
+              <motion.div 
                 key="lab"
                 initial={{ opacity: 0, scale: 0.99 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -144,7 +144,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 transition={{ duration: 0.15 }}
                 className="absolute inset-0 overflow-hidden"
               >
-                <TestLab
+                <TestLab 
                   config={activeTab.config}
                   headersList={activeTab.headersList}
                   ws={ws}
@@ -161,7 +161,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
             )}
 
             {view === 'variables' && (
-              <motion.div
+              <motion.div 
                 key="variables"
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -176,7 +176,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
             )}
 
             {view === 'history' && (
-              <motion.div
+              <motion.div 
                 key="history"
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -186,12 +186,12 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
               >
                 <div className="max-w-4xl mx-auto flex flex-col h-full overflow-hidden">
                   <div className="flex items-center justify-between mb-5 shrink-0 pb-2 border-b border-slate-800/60 select-none">
-                    <h2 className="text-base font-black text-white font-mono tracking-widest flex items-center gap-2.5 uppercase">
-                      System_History_Logs
-                    </h2>
-                    <div className="text-xs text-slate-400 font-mono bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg font-bold select-none uppercase">
-                      RETENTION: 100_ENTRIES
-                    </div>
+                     <h2 className="text-base font-black text-white font-mono tracking-widest flex items-center gap-2.5 uppercase">
+                        System_History_Logs
+                     </h2>
+                     <div className="text-xs text-slate-400 font-mono bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg font-bold select-none uppercase">
+                       RETENTION: 100_ENTRIES
+                     </div>
                   </div>
                   <HistoryList />
                 </div>
@@ -219,7 +219,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       </main>
 
       {/* 3. Global custom terminal modal dialog overlay */}
-      <TerminalDialog
+      <TerminalDialog 
         dialog={dialog}
         setDialog={setDialog}
         collections={collections}

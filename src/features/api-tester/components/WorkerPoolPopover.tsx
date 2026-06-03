@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Cpu, X, Plus, Minus } from 'lucide-react';
-import { cn } from '../../../lib/utils';
-import { Telemetry } from '../types';
+import { cn } from '@/lib/utils';
+import { Telemetry } from '@/features/api-tester/types';
 
 interface WorkerPoolPopoverProps {
   isOpen: boolean;
