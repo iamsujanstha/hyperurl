@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Zap, Shield, Repeat, Target, Flame, AlertTriangle, Cpu, Activity, 
-  Play, Info, Settings2, BarChart4, Terminal, X, RefreshCw, Layout, 
-  Beaker, ChevronDown, ChevronUp, Sparkles, Copy, Code2, Globe, Server, Hash, Clock, Plus, Trash2, List, ShieldAlert, FileJson
+  Activity, Clock, Server, ShieldAlert, ChevronDown, Repeat, Trash2, Globe, Terminal, Code2, Copy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RequestConfig, CurlResult } from '@/server/modules/curl-engine';
@@ -16,6 +14,11 @@ import {
   TestModule as StaticTestModule 
 } from './TestLabData';
 
+import { TestLabSidebar } from './testlab/TestLabSidebar';
+import { TestLabResults } from './testlab/TestLabResults';
+import { TestLabResultDetail } from './testlab/TestLabResultDetail';
+import { TestLabTheory } from './testlab/TestLabTheory';
+
 export type { TestModuleId };
 
 export interface TestModule extends Omit<StaticTestModule, 'category'> {
@@ -25,15 +28,15 @@ export interface TestModule extends Omit<StaticTestModule, 'category'> {
 
 const getModuleIcon = (id: TestModuleId) => {
   switch (id) {
-    case 'basic_query': return <Target size={16} />;
-    case 'blast': return <Zap size={16} />;
-    case 'race': return <Activity size={16} />;
-    case 'replay': return <Repeat size={16} />;
-    case 'load': return <Server size={16} />;
-    case 'chaos': return <Flame size={16} />;
-    case 'fuzzer': return <Cpu size={16} />;
-    case 'security_audit': return <Shield size={16} />;
-    case 'distributed': return <Globe size={16} />;
+    case 'basic_query': return <span className="font-sans font-bold">Q</span>;
+    case 'blast': return <span className="font-sans font-bold">B</span>;
+    case 'race': return <span className="font-sans font-bold">R</span>;
+    case 'replay': return <span className="font-sans font-bold">P</span>;
+    case 'load': return <span className="font-sans font-bold">L</span>;
+    case 'chaos': return <span className="font-sans font-bold">C</span>;
+    case 'fuzzer': return <span className="font-sans font-bold">F</span>;
+    case 'security_audit': return <span className="font-sans font-bold">S</span>;
+    case 'distributed': return <span className="font-sans font-bold">D</span>;
   }
 };
 
@@ -42,172 +45,6 @@ const TEST_MODULES: TestModule[] = STATIC_TEST_MODULES.map(mod => ({
   icon: getModuleIcon(mod.id),
   category: mod.category as 'perf' | 'resilience' | 'security'
 }));
-
-function LabJsonInteractiveNode({ label, val, isLast = true }: { label?: string; val: any; isLast?: boolean; key?: any }) {
-  const [collapsed, setCollapsed] = useState(label !== undefined);
-
-  if (val === null) {
-    return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed">
-        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mx-1">:</span>}
-        <span className="text-slate-500 font-semibold italic">null</span>
-        {!isLast && <span className="text-slate-500">,</span>}
-      </div>
-    );
-  }
-
-  const type = typeof val;
-
-  if (type === 'string') {
-    return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px] break-all leading-relaxed">
-        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mx-1">:</span>}
-        <span className="text-emerald-400">"{val}"</span>
-        {!isLast && <span className="text-slate-500">,</span>}
-      </div>
-    );
-  }
-
-  if (type === 'number') {
-    return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed font-semibold">
-        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-amber-500">{val}</span>
-        {!isLast && <span className="text-slate-500">,</span>}
-      </div>
-    );
-  }
-
-  if (type === 'boolean') {
-    return (
-      <div className="pl-4 py-0.5 select-text font-mono text-[11px] leading-relaxed font-bold">
-        {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-        {label && <span className="text-slate-500 mr-1">:</span>}
-        <span className="text-violet-400">{val.toString()}</span>
-        {!isLast && <span className="text-slate-500">,</span>}
-      </div>
-    );
-  }
-
-  if (Array.isArray(val)) {
-    const itemsCount = val.length;
-    const itemsText = itemsCount === 1 ? '1 item' : `${itemsCount} items`;
-
-    if (itemsCount === 0) {
-      return (
-        <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
-          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-          {label && <span className="text-slate-500 mr-1">:</span>}
-          <span className="text-slate-600">[]</span>
-          {!isLast && <span className="text-slate-500">,</span>}
-        </div>
-      );
-    }
-
-    return (
-      <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
-        <div 
-          className="flex items-center gap-1 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors py-0.5" 
-          onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
-        >
-          <span className="text-slate-500 text-[9px] font-sans w-3 text-center inline-block">
-            {collapsed ? '▶' : '▼'}
-          </span>
-          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-          {label && <span className="text-slate-500 mr-1">:</span>}
-          {collapsed ? (
-            <span className="text-slate-400">
-              {"[...]"} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
-            </span>
-          ) : (
-            <span className="text-slate-300">
-              {"["} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
-            </span>
-          )}
-        </div>
-        {!collapsed && (
-          <div className="border-l border-slate-800/40 ml-1 pl-3 transition-all space-y-0.5">
-            {val.map((item, idx) => (
-              <LabJsonInteractiveNode key={idx} val={item} isLast={idx === itemsCount - 1} />
-            ))}
-          </div>
-        )}
-        {!collapsed && (
-          <div className="text-slate-500 pl-4 py-0.5">
-            {"]"}
-            {!isLast && ","}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (type === 'object') {
-    const keys = Object.keys(val);
-    const itemsCount = keys.length;
-    const itemsText = itemsCount === 1 ? '1 item' : `${itemsCount} items`;
-
-    if (itemsCount === 0) {
-      return (
-        <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
-          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-          {label && <span className="text-slate-500 mr-1">:</span>}
-          <span className="text-slate-600">{"{}"}</span>
-          {!isLast && <span className="text-slate-500">,</span>}
-        </div>
-      );
-    }
-
-    return (
-      <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
-        <div 
-          className="flex items-center gap-1 cursor-pointer select-none hover:bg-slate-800/10 dark:hover:bg-slate-800/25 rounded px-1 -ml-1 transition-colors py-0.5" 
-          onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
-        >
-          <span className="text-slate-500 text-[9px] font-sans w-3 text-center inline-block">
-            {collapsed ? '▶' : '▼'}
-          </span>
-          {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-          {label && <span className="text-slate-500 mr-1">:</span>}
-          {collapsed ? (
-            <span className="text-slate-400">
-              {"{...}"} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
-            </span>
-          ) : (
-            <span className="text-slate-300">
-              {"{"} <span className="text-slate-500 text-[10px] italic font-sans pl-1">{itemsText}</span>
-            </span>
-          )}
-        </div>
-        {!collapsed && (
-          <div className="border-l border-slate-800/40 ml-1 pl-3 transition-all space-y-0.5">
-            {keys.map((k, idx) => (
-              <LabJsonInteractiveNode key={k} label={k} val={val[k]} isLast={idx === itemsCount - 1} />
-            ))}
-          </div>
-        )}
-        {!collapsed && (
-          <div className="text-slate-500 pl-4 py-0.5">
-            {"}"}
-            {!isLast && ","}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="pl-4 py-0.5 font-mono text-[11px] leading-relaxed">
-      {label && <span className="text-blue-400 font-bold">"{label}"</span>}
-      {label && <span className="text-slate-500 mr-1">:</span>}
-      <span className="text-slate-400">{String(val)}</span>
-      {!isLast && <span className="text-slate-500">,</span>}
-    </div>
-  );
-}
 
 interface TestLabProps {
   config: RequestConfig;
@@ -231,7 +68,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [concurrency, setConcurrency] = useState(5);
   const [retries, setRetries] = useState(0);
   const [labTab, setLabTab] = useState<'logs' | 'curl' | 'theory'>('logs');
-  const [showLabCurl, setShowLabCurl] = useState(false);
   const [assertions, setAssertions] = useState<{ id: string, type: string, value: string }[]>([
     { id: '1', type: 'STATUS_CODE', value: '200' }
   ]);
@@ -241,7 +77,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
   const [selectedRegions, setSelectedRegions] = useState<string[]>(['us', 'eu', 'apac', 'latam']);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'perf' | 'resilience' | 'security'>('all');
-  const [showPresets, setShowPresets] = useState(false);
   const [logDetailWidth, setLogDetailWidth] = useState(560);
   const [isDraggingLogDetail, setIsDraggingLogDetail] = useState(false);
 
@@ -263,11 +98,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDraggingLogDetail]);
-
-  const filteredModules = useMemo(() => {
-    if (selectedCategory === 'all') return TEST_MODULES;
-    return TEST_MODULES.filter(m => m.category === selectedCategory);
-  }, [selectedCategory]);
 
   const activeModule = useMemo(() => {
     return TEST_MODULES.find(m => m.id === selectedModule) || TEST_MODULES[0];
@@ -303,7 +133,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       default:
         return baseCurl;
     }
-  }, [selectedModule, config, totalIterations, concurrency, selectedRegions, iterationsPerUser]);
+  }, [selectedModule, config, totalIterations, concurrency]);
 
   // Compute Latency categories dynamically
   const latencyCategories = useMemo(() => {
@@ -541,7 +371,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       const resStatus = r.status;
       const resHeaders = r.headers || {};
 
-      // 1. SQLi Probe detection
       if (curlLower.includes('sqli_test') || curlLower.includes("' or '1'='1'")) {
         const hasSqlError = /sql|mysql|sqlite|postgresql|mariadb|syntax error/i.test(resBody);
         const badStatus = resStatus === 500;
@@ -550,20 +379,17 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
         }
       }
 
-      // 2. XSS reflect check
       if (curlLower.includes('qaxss') || curlLower.includes('<script>')) {
         if (resBody.includes('qaxss') && resBody.includes('<script>')) {
           xssVulnerable = true;
         }
       }
 
-      // 3. Auth Strip check
       const isNoAuthProbe = curlLower.includes('x-security-test-type: no_auth');
       if (isNoAuthProbe && resStatus < 300) {
         authBypassed = true;
       }
 
-      // 4. CORS check
       const lowerResHeaders = Object.keys(resHeaders).reduce((acc, k) => {
         acc[k.toLowerCase()] = String(resHeaders[k]).toLowerCase();
         return acc;
@@ -575,7 +401,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
         }
       }
 
-      // 5. Path traversal leak check
       if (curlLower.includes('passwd') || curlLower.includes('etc/passwd')) {
         if (/root:x:0/i.test(resBody) || /\[boot loader\]/i.test(resBody)) {
           pathTraversalLeak = true;
@@ -680,7 +505,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
     if (securityChecks.headersAuditor) {
       if (missingCsp || missingXFrame || missingXContentType) {
-        let missing = [];
+        const missing: string[] = [];
         if (missingCsp) missing.push('CSP');
         if (missingXFrame) missing.push('X-Frame-Options');
         if (missingXContentType) missing.push('X-Content-Type-Options');
@@ -707,7 +532,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   }, [results, selectedModule, securityChecks]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0B0D11] overflow-hidden text-slate-200">
+    <div className="flex flex-col h-full bg-[#0B0D11] overflow-hidden text-slate-205">
       {/* HUD Header */}
       <div className="p-4 border-b border-[#1E293B] bg-[#0F1115] shrink-0 flex flex-col md:flex-row md:items-center justify-start gap-4">
         {/* Dynamic Interactive Endpoint Changer - Direct Access */}
@@ -728,7 +553,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                 <option key={m} value={m} className="bg-[#0B0D11] text-white font-mono font-bold text-xs">{m}</option>
               ))}
             </select>
-            <ChevronDown size={11} className="text-slate-505 -ml-1.5 pointer-events-none" />
+            <ChevronDown size={11} className="text-slate-500 -ml-1.5 pointer-events-none" />
           </div>
 
           <div className="flex-grow flex items-center gap-2 px-4 h-11">
@@ -746,613 +571,46 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
       {/* Main Multi-Pane Workspace Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* PANEL 2: Middle Config & Execution Controls */}
-        <div className="w-[420px] bg-[#0F1115] border-r border-[#1E293B] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
-          <div className="p-5 space-y-6 flex-grow">
-            
-            {/* Unified Sleek Test Strategy Selector (Replaced Left Sidebar) */}
-            <div className="space-y-3 bg-slate-900/30 p-4 border border-slate-800/80 rounded-xl">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">TEST STRATEGY</span>
-              
-              {/* Category Filter Tabs */}
-              <div className="flex bg-black/60 p-1 border border-slate-800/50 rounded-lg gap-1">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'perf', label: 'Perf' },
-                  { id: 'resilience', label: 'Resil' },
-                  { id: 'security', label: 'Security' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setSelectedCategory(tab.id as any)}
-                    className={cn(
-                      "flex-1 px-1.5 py-1 text-[8px] font-extrabold tracking-wider uppercase rounded transition-all cursor-pointer select-none outline-none border",
-                      selectedCategory === tab.id
-                        ? "bg-slate-800 border-slate-700 text-emerald-400 font-black"
-                        : "bg-transparent border-transparent text-slate-400 hover:text-slate-205"
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {filteredModules.map((module) => {
-                  const isActive = selectedModule === module.id;
-                  return (
-                    <button
-                      key={module.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModule(module.id);
-                        setSelectedResult(null); 
-                      }}
-                      className={cn(
-                        "p-3 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer relative overflow-hidden select-none outline-none",
-                        isActive 
-                          ? "bg-emerald-500/15 border-emerald-500/40 text-white" 
-                          : "bg-black/40 border-slate-850 text-slate-400 hover:bg-slate-900/35 hover:border-slate-800 hover:text-slate-200"
-                      )}
-                    >
-                      <div className={cn(
-                        "p-1.5 rounded-md border",
-                        isActive ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-[#090D14]/50 border-slate-850/80 text-slate-500"
-                      )}>
-                        {module.icon}
-                      </div>
-                      <div className="text-center">
-                        <span className="text-[9px] font-black font-mono tracking-wider block uppercase">{module.name.replace('_', ' ')}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Thread controls & Error Mitigation */}
-            {selectedModule !== 'basic_query' && (
-              <>
-                <div className="space-y-4">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block border-b border-slate-800 pb-1.5">Concurrency Engine</span>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-mono text-slate-400 uppercase font-extrabold flex items-center gap-1.5">
-                        <Zap size={12} className="text-amber-400" /> Workers
-                      </label>
-                      <input 
-                        type="number" 
-                        value={concurrency}
-                        onChange={(e) => {
-                          setConcurrency(Math.max(1, parseInt(e.target.value) || 1));
-                          setSelectedPresetId('');
-                        }}
-                        disabled={loading}
-                        className="w-full bg-black border border-slate-705 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-mono text-slate-300 uppercase font-extrabold flex items-center gap-1.5">
-                        <Repeat size={12} className="text-blue-400" /> Iterations
-                      </label>
-                      <input 
-                        type="number" 
-                        value={iterationsPerUser}
-                        onChange={(e) => {
-                          setIterationsPerUser(Math.max(1, parseInt(e.target.value) || 1));
-                          setSelectedPresetId('');
-                        }}
-                        disabled={loading}
-                        className="w-full bg-black border border-slate-705 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between bg-black/40 p-3 border border-slate-800 rounded-lg text-xs font-mono">
-                    <span className="text-slate-350 font-bold">Cumulative Load:</span>
-                    <span className="text-emerald-400 font-black text-sm">{totalIterations} requests total</span>
-                  </div>
-
-
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-slate-400 uppercase font-bold flex items-center gap-1.5">
-                    <Settings2 size={12} className="text-violet-400" /> Error tolerance
-                  </label>
-                  <select 
-                    value={retries}
-                    onChange={(e) => {
-                      setRetries(parseInt(e.target.value));
-                      setSelectedPresetId('');
-                    }}
-                    disabled={loading}
-                    className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 outline-none cursor-pointer appearance-none hover:border-slate-700"
-                  >
-                    <option value={0} className="bg-slate-900 text-white">NO RETRY (FAIL_FAST)</option>
-                    <option value={1} className="bg-slate-900 text-white">1X RETRY (RAPID_REATTEMPT)</option>
-                    <option value={2} className="bg-slate-900 text-white">2X RETRY (LINEAR_BACKOFF)</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            {/* Custom inputs based on module */}
-            {selectedModule === 'security_audit' && (
-              <div className="p-4 bg-rose-950/20 rounded-lg border border-rose-500/30 space-y-3">
-                <div className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                  <ShieldAlert size={14} /> Security shield configuration
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { key: 'sqli', label: 'PROBE SQL INJECTIONS (SQLI)' },
-                    { key: 'xss', label: 'PROBE CROSS-SITE SCRIPTING (XSS)' },
-                    { key: 'pathTraversal', label: 'LOCAL PATH TRAVERSAL PROBE' },
-                    { key: 'headersAuditor', label: 'AUDIT RESPONSE HEADERS HYGIENE' }
-                  ].map(item => (
-                    <label key={item.key} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={(securityChecks as any)[item.key]} 
-                        onChange={(e) => setSecurityChecks({ ...securityChecks, [item.key]: e.target.checked })}
-                        className="w-4 h-4 accent-rose-500 bg-black border-slate-700 rounded transition-all" 
-                      />
-                      {item.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedModule === 'fuzzer' && (
-              <div className="p-4 bg-purple-950/20 rounded-lg border border-purple-500/30 space-y-3">
-                <div className="text-xs font-black text-purple-400 uppercase tracking-widest flex items-center gap-2 font-mono">
-                  <Cpu size={14} /> Mutation fuzzer engine
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { key: 'keyDeletions', label: 'MUTATE BY DELETING INTEGRAL KEYPAIRS' },
-                    { key: 'typeMutations', label: 'CROSS-MUTATE TYPES (STRING VS NUMBER)' },
-                    { key: 'bufferOverflow', label: 'FLOOD BY BUFFER OVERFLOWS (1000x STRING)' }
-                  ].map(item => (
-                    <label key={item.key} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={(fuzzerChecks as any)[item.key]} 
-                        onChange={(e) => setFuzzerChecks({ ...fuzzerChecks, [item.key]: e.target.checked })}
-                        className="w-4 h-4 accent-purple-500 bg-black border-slate-700 rounded transition-all" 
-                      />
-                      {item.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedModule === 'chaos' && (
-              <div className="p-4 bg-orange-950/20 rounded-lg border border-orange-500/30 space-y-3">
-                <div className="text-xs font-black text-orange-400 uppercase tracking-widest flex items-center gap-2 font-mono">
-                  <Flame size={14} /> Entropy Chaos Injection
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs font-mono">
-                    <span className="text-slate-400 font-extrabold">MAX JITTER WAVE DELAY</span>
-                    <span className="text-orange-400 font-black">{chaosAmplitude}ms</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min={50} 
-                    max={1500} 
-                    step={50}
-                    value={chaosAmplitude}
-                    onChange={(e) => setChaosAmplitude(parseInt(e.target.value))}
-                    disabled={loading}
-                    className="w-full accent-orange-550 cursor-pointer h-1.5 bg-black rounded"
-                  />
-                  <div className="text-[10px] text-slate-450 leading-relaxed font-sans">
-                    Entropy adds packet delays and forces structural failures to stress resilience layers.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {selectedModule === 'distributed' && (
-              <div className="space-y-3">
-                <div className="p-4 bg-indigo-950/20 rounded-lg border border-indigo-500/30 space-y-3">
-                  <div className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 font-mono">
-                    <Globe size={14} /> Global Simulation Nodes
-                  </div>
-                  <div className="space-y-2">
-                    {[
-                      { id: 'us', label: '🇺🇸 NORTH AMERICA (US-EAST / US-WEST)' },
-                      { id: 'eu', label: '🇩🇪 EUROPE (FRANKFURT / LONDON / PARIS)' },
-                      { id: 'apac', label: '🇯🇵 ASIA PACIFIC (TOKYO / SINGAPORE / SYDNEY)' },
-                      { id: 'latam', label: '🇧🇷 LATIN AMERICA (SÃO PAULO / MEXICO / BOGOTÁ)' }
-                    ].map(region => {
-                      const isChecked = selectedRegions.includes(region.id);
-                      return (
-                        <label key={region.id} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
-                          <input 
-                            type="checkbox" 
-                            checked={isChecked} 
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedRegions([...selectedRegions, region.id]);
-                              } else {
-                                if (selectedRegions.length > 1) {
-                                  setSelectedRegions(selectedRegions.filter(r => r !== region.id));
-                                }
-                              }
-                            }}
-                            className="w-4 h-4 accent-indigo-500 bg-black border-slate-700 rounded transition-all" 
-                          />
-                          {region.label}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* QA Test Preset Templates Section (Premium Collapsible) */}
-            <div className="space-y-3 bg-slate-900/45 p-4 border border-slate-800 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setShowPresets(!showPresets)}
-                className="flex items-center justify-between w-full hover:text-white transition-colors cursor-pointer select-none outline-none"
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles size={14} className="text-violet-400" />
-                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">Automated QA Presets</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-slate-500 font-mono font-bold uppercase">{showPresets ? 'COLLAPSE' : 'EXPAND'}</span>
-                  {showPresets ? <ChevronUp size={12} className="text-slate-500" /> : <ChevronDown size={12} className="text-slate-500" />}
-                </div>
-              </button>
-              <AnimatePresence>
-                {showPresets && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden space-y-3 pt-1"
-                  >
-                    <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
-                      Click a test suite preset to auto-initialize headers, bodies, parameters, and assertions for verification.
-                    </p>
-                    <div className="grid grid-cols-1 gap-2">
-                      {[
-                        {
-                          id: 'PRESET_DISTRIBUTED_RATE_LIMIT',
-                          name: 'Distributed Rate-Limit Sandbox',
-                          desc: 'Checks IP-based limits (throttles to 429 if the same client hits >3 requests/sec).',
-                          icon: <Globe size={12} className="text-indigo-400" />,
-                          setup: () => {
-                            if (onChangeConfig) {
-                              onChangeConfig({
-                                method: 'GET',
-                                url: 'http://localhost:3000/api/demo/rate-limited',
-                                body: '',
-                                headers: {
-                                  ...config.headers,
-                                }
-                              });
-                            }
-                            setConcurrency(5);
-                            setIterationsPerUser(10);
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '200' }
-                            ]);
-                            setSelectedPresetId('PRESET_DISTRIBUTED_RATE_LIMIT');
-                            setSelectedModule('distributed');
-                          }
-                        },
-                        {
-                          id: 'PRESET_IDEMPOTENCY',
-                          name: 'Idempotency Validation',
-                          desc: 'Checks POST / DELETE attempts with idempotency variables and keys.',
-                          icon: <Repeat size={12} className="text-blue-400" />,
-                          setup: () => {
-                            if (onChangeConfig) {
-                              onChangeConfig({
-                                method: 'POST',
-                                body: config.body || JSON.stringify({ transaction_id: "IDEM_TX_" + Math.floor(Math.random() * 100000), amount: 150.00, user_id: 1024 }),
-                                headers: {
-                                  ...config.headers,
-                                  'Idempotency-Key': 'IDEM_' + Math.random().toString(36).substring(2, 10),
-                                  'X-Request-ID': 'REQ_' + Math.random().toString(36).substring(2, 10)
-                                }
-                              });
-                            }
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '250' }, // Accepts normal/created responses
-                              { id: '2', type: 'IDEMPOTENCY_MATCH', value: 'true' }
-                            ]);
-                            setSelectedPresetId('PRESET_IDEMPOTENCY');
-                            setSelectedModule('replay');
-                          }
-                        },
-                        {
-                          id: 'PRESET_SCHEMA',
-                          name: 'Schema & Field Integrity',
-                          desc: 'Validates required model fields, type compliance, and data consistency.',
-                          icon: <Cpu size={12} className="text-cyan-400" />,
-                          setup: () => {
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '200' },
-                              { id: '2', type: 'SCHEMA_KEY', value: 'id' }
-                            ]);
-                            setSelectedPresetId('PRESET_SCHEMA');
-                            setSelectedModule('fuzzer');
-                          }
-                        },
-                        {
-                          id: 'PRESET_PAGINATION',
-                          name: 'Pagination Boundaries',
-                          desc: 'Checks offset/limit boundaries, sorting directions, and cursors.',
-                          icon: <List size={12} className="text-amber-400" />,
-                          setup: () => {
-                            try {
-                              const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
-                              urlObj.searchParams.set('page', '1');
-                              urlObj.searchParams.set('limit', '10');
-                              urlObj.searchParams.set('sort', 'desc');
-                              if (onChangeConfig) {
-                                onChangeConfig({ url: urlObj.toString() });
-                              }
-                            } catch (e) {
-                              try {
-                                if (onChangeConfig) {
-                                  onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'page=1&limit=10&sort=desc' });
-                                }
-                              } catch {}
-                            }
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '200' },
-                              { id: '2', type: 'SCHEMA_KEY', value: 'limit' }
-                            ]);
-                            setSelectedPresetId('PRESET_PAGINATION');
-                            setSelectedModule('basic_query');
-                          }
-                        },
-                        {
-                          id: 'PRESET_PERFORMANCE',
-                          name: 'SLA Performance Test',
-                          desc: 'Evaluates peak latencies to keep transactions strictly under 500ms.',
-                          icon: <Zap size={12} className="text-orange-400" />,
-                          setup: () => {
-                            setConcurrency(10);
-                            setIterationsPerUser(5);
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '200' },
-                              { id: '2', type: 'LATENCY_LESS_THAN', value: '500' }
-                            ]);
-                            setSelectedPresetId('PRESET_PERFORMANCE');
-                            setSelectedModule('blast');
-                          }
-                        },
-                        {
-                          id: 'PRESET_SECURITY',
-                          name: 'Security Shield Audit',
-                          desc: 'Audits unescaped vectors, safe protocols, and missing CORS security headers.',
-                          icon: <ShieldAlert size={12} className="text-rose-400" />,
-                          setup: () => {
-                            setAssertions([
-                              { id: '1', type: 'HTTPS_ENFORCED', value: 'true' },
-                              { id: '2', type: 'HEADER_EXISTS', value: 'x-frame-options' }
-                            ]);
-                            setSelectedPresetId('PRESET_SECURITY');
-                            setSelectedModule('security_audit');
-                          }
-                        },
-                        {
-                          id: 'PRESET_VERSIONING',
-                          name: 'API Version Verification',
-                          desc: 'Tests API clients version selectors (Accept or custom HTTP headers).',
-                          icon: <Server size={12} className="text-violet-400" />,
-                          setup: () => {
-                            if (onChangeConfig) {
-                              onChangeConfig({
-                                headers: {
-                                  ...config.headers,
-                                  'Accept': 'application/vnd.myapi.v2+json',
-                                  'X-API-Version': '2026-05-31'
-                                }
-                              });
-                            }
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '200' },
-                              { id: '2', type: 'HEADER_EXISTS', value: 'x-api-version' }
-                            ]);
-                            setSelectedPresetId('PRESET_VERSIONING');
-                            setSelectedModule('basic_query');
-                          }
-                        },
-                        {
-                          id: 'PRESET_ISOLATION',
-                          name: 'Transactional Isolation Check',
-                          desc: 'Validates that testing records use dynamic variables and safe boundaries.',
-                          icon: <Target size={12} className="text-emerald-400" />,
-                          setup: () => {
-                            const randVal = Math.floor(Math.random() * 999999);
-                            try {
-                              const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
-                              urlObj.searchParams.set('isolated_tx_id', 'TX_' + randVal);
-                              if (onChangeConfig) {
-                                onChangeConfig({ url: urlObj.toString() });
-                              }
-                            } catch (e) {
-                              if (onChangeConfig) {
-                                onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'isolated_tx_id=TX_' + randVal });
-                              }
-                            }
-                            setAssertions([
-                              { id: '1', type: 'STATUS_CODE', value: '200' },
-                              { id: '2', type: 'CONTAINS_TEXT', value: 'TX_' }
-                            ]);
-                            setSelectedPresetId('PRESET_ISOLATION');
-                            setSelectedModule('fuzzer');
-                          }
-                        }
-                      ].map(p => {
-                        const isActive = selectedPresetId === p.id;
-                        return (
-                          <button
-                            key={p.id}
-                            onClick={() => {
-                              p.setup();
-                              // Auto collapse presets section upon selection to keep things super tidy
-                              setShowPresets(false);
-                            }}
-                            type="button"
-                            className={cn(
-                              "w-full text-left p-2.5 rounded-lg border transition-all text-xs font-mono flex items-start gap-2.5 cursor-pointer select-none",
-                              isActive
-                                ? "bg-violet-950/40 border-violet-500/40 text-white shadow-lg"
-                                : "bg-black/30 border-slate-800/80 text-slate-350 hover:bg-slate-900/60 hover:border-slate-700 hover:text-white"
-                            )}
-                          >
-                            <div className="p-1.5 bg-black/60 rounded border border-slate-850 shrink-0">
-                              {p.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="font-extrabold text-slate-200 block text-[11px] leading-tight select-none">{p.name}</span>
-                              <span className="text-[10px] text-slate-455 leading-relaxed font-sans block mt-0.5 select-none">{p.desc}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Assertions Roster */}
-            <div className="space-y-3 pt-4 border-t border-slate-800">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-slate-450 tracking-wider">Verification Criteria</span>
-                <button
-                  type="button"
-                  onClick={addAssertion}
-                  disabled={loading}
-                  className="px-2.5 py-1 text-xs font-mono text-emerald-450 hover:text-white flex items-center gap-1.5 border border-slate-700 bg-black hover:border-emerald-500 transition-all rounded-lg font-bold"
-                >
-                  <Plus size={12} /> ADD_RULE
-                </button>
-              </div>
-              <div className="space-y-2">
-                {assertions.map(item => (
-                  <div key={item.id} className="flex gap-2 items-center">
-                    <select
-                      value={item.type}
-                      onChange={(e) => {
-                        updateAssertion(item.id, { type: e.target.value });
-                        setSelectedPresetId('');
-                      }}
-                      disabled={loading}
-                      className="bg-black border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-300"
-                    >
-                      <option value="STATUS_CODE" className="text-white bg-slate-900">STATUS ===</option>
-                      <option value="LATENCY_LESS_THAN" className="text-white bg-slate-900">LATENCY &lt;</option>
-                      <option value="CONTAINS_TEXT" className="text-white bg-slate-900">CONTAINS</option>
-                      <option value="HEADER_EXISTS" className="text-white bg-slate-900">HDR EXISTS</option>
-                      <option value="HEADER_VALUE" className="text-white bg-slate-900">HDR MATCH</option>
-                      <option value="SCHEMA_KEY" className="text-white bg-slate-900">JSON PATH</option>
-                      <option value="HTTPS_ENFORCED" className="text-white bg-slate-900">HTTPS CHECK</option>
-                      <option value="IDEMPOTENCY_MATCH" className="text-white bg-slate-900">IDEMPOTENT</option>
-                    </select>
-                    <input
-                      value={item.value}
-                      onChange={(e) => {
-                        updateAssertion(item.id, { value: e.target.value });
-                        setSelectedPresetId('');
-                      }}
-                      type="text"
-                      disabled={loading}
-                      placeholder="e.g. 200"
-                      className="flex-1 min-w-0 bg-black border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-emerald-450 font-black focus:border-emerald-500 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        removeAssertion(item.id);
-                        setSelectedPresetId('');
-                      }}
-                      disabled={loading || assertions.length <= 1}
-                      className="p-1.5 text-slate-400 hover:text-rose-450 disabled:opacity-30 cursor-pointer"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Transmission previews */}
-            <div className="space-y-3 pt-4 border-t border-slate-800">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Target curl strategy</span>
-                <button 
-                  onClick={() => setShowLabCurl(!showLabCurl)}
-                  className={cn(
-                    "text-xs font-mono flex items-center gap-1.5 uppercase transition-all px-2.5 py-1 rounded-lg border",
-                    showLabCurl ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" : "bg-white/5 border-slate-800/45 text-slate-400 hover:text-slate-200"
-                  )}
-                >
-                  <Terminal size={12} /> {showLabCurl ? 'HIDE CODE' : 'SHOW SHELL'}
-                </button>
-              </div>
-              <AnimatePresence>
-                {showLabCurl && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-3.5 bg-black border border-slate-800 rounded-lg font-mono text-xs text-emerald-400 leading-relaxed whitespace-pre-wrap break-all shadow-inner select-all">
-                       {curlStrategy}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          <div className="p-4 bg-black/55 border-t border-slate-800 space-y-3 shrink-0">
-            <button
-              onClick={loading ? onAbort : startTest}
-              disabled={!config.url}
-              className={cn(
-                "w-full py-4 rounded-xl text-xs sm:text-sm font-mono uppercase tracking-widest transition-all flex items-center justify-center gap-2.5 active:scale-95 shadow-lg select-none cursor-pointer",
-                loading 
-                  ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/40 animate-pulse font-black" 
-                  : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 disabled:opacity-25 border border-emerald-500/40 font-black h-12"
-              )}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" /> ABORT ACTIVE RUNNER
-                </>
-              ) : (
-                <>
-                  <Play size={14} fill="currentColor" /> INITIATE STRESS SEQUENCE
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+        {/* PANEL 2: Left Sidebar Config & Controls */}
+        <TestLabSidebar 
+          config={config}
+          loading={loading}
+          selectedModule={selectedModule}
+          setSelectedModule={setSelectedModule}
+          setSelectedResult={setSelectedResult}
+          concurrency={concurrency}
+          setConcurrency={setConcurrency}
+          iterationsPerUser={iterationsPerUser}
+          setIterationsPerUser={setIterationsPerUser}
+          retries={retries}
+          setRetries={setRetries}
+          securityChecks={securityChecks}
+          setSecurityChecks={setSecurityChecks}
+          fuzzerChecks={fuzzerChecks}
+          setFuzzerChecks={setFuzzerChecks}
+          chaosAmplitude={chaosAmplitude}
+          setChaosAmplitude={setChaosAmplitude}
+          selectedRegions={selectedRegions}
+          setSelectedRegions={setSelectedRegions}
+          selectedPresetId={selectedPresetId}
+          setSelectedPresetId={setSelectedPresetId}
+          assertions={assertions}
+          addAssertion={addAssertion}
+          removeAssertion={removeAssertion}
+          updateAssertion={updateAssertion}
+          setAssertions={setAssertions}
+          curlStrategy={curlStrategy}
+          onStartTest={startTest}
+          onAbort={onAbort}
+          onChangeConfig={onChangeConfig}
+        />
 
         {/* PANEL 3: Right Live Telemetry Screen */}
         <div className="flex-1 bg-[#07080A] flex flex-col overflow-hidden">
-          {/* Telemetry values with clean typography and robust accessibility sizing */}
+          {/* Telemetry values with clean typography */}
           <div className="p-5 border-b border-slate-800 bg-black/60 grid grid-cols-2 md:grid-cols-4 gap-6 select-none shadow-[inset_0_-2px_10px_rgba(0,0,0,0.5)] shrink-0">
              <div className="space-y-1.5 border-r border-slate-900 pr-4">
-                <div className="text-[10px] font-black text-slate-405 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                    <Activity size={12} className="text-emerald-400" /> Current RPS
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-white font-mono leading-none">
@@ -1380,9 +638,9 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
              </div>
              <div className="space-y-1.5">
                 <div className="text-[10px] font-black text-rose-450 uppercase tracking-wider flex items-center gap-1.5">
-                   <ShieldAlert size={12} className="text-rose-455" /> Errors
+                   <ShieldAlert size={12} className="text-rose-400" /> Errors
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-rose-455 font-mono leading-none">
+                <div className="text-xl sm:text-2xl font-black text-rose-400 font-mono leading-none">
                    {results.filter(r => r.status >= 400).length}
                 </div>
              </div>
@@ -1398,12 +656,10 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                 ].map(tab => (
                   <button 
                     key={tab.id}
-                    onClick={() => {
-                      setLabTab(tab.id as any);
-                    }}
+                    onClick={() => setLabTab(tab.id as any)}
                     className={cn(
-                      "px-4.5 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 font-mono outline-none focus:ring-0 select-none cursor-pointer",
-                      labTab === tab.id ? "border-emerald-500 text-white font-black" : "border-transparent text-slate-400 hover:text-slate-200"
+                      "px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 font-mono outline-none focus:ring-0 select-none cursor-pointer",
+                      labTab === tab.id ? "border-emerald-500 text-white font-black" : "border-transparent text-slate-400 hover:text-slate-255"
                     )}
                   >
                     {tab.label}
@@ -1414,9 +670,9 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                 <button
                   type="button"
                   onClick={handleClearLogs}
-                  className="px-3 py-1.5 rounded-md hover:bg-slate-850 border border-slate-800 text-[10px] text-rose-455 font-mono font-black uppercase tracking-wider flex items-center gap-1.5 transition-all select-none cursor-pointer"
+                  className="px-3 py-1.5 rounded-md hover:bg-slate-850 border border-slate-800 text-[10px] text-rose-400 font-mono font-black uppercase tracking-wider flex items-center gap-1.5 transition-all select-none cursor-pointer"
                 >
-                  <Trash2 size={12} className="text-rose-455 animate-pulse" /> Clear Telemetry logs
+                  <Trash2 size={12} className="text-rose-400 animate-pulse" /> Clear Telemetry logs
                 </button>
              )}
           </div>
@@ -1426,595 +682,39 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
              <AnimatePresence mode="wait">
                 {labTab === 'logs' && (
                   <div className="flex-1 flex overflow-hidden relative">
-                    {/* Log list with proper text sizes for great legibility */}
-                    <div className={cn("flex-grow overflow-y-auto p-5 custom-scrollbar space-y-2 bg-[#050608]/50", selectedResult ? "hidden lg:block" : "block")}>
-                       
-                       {/* Assessment Diagnostics complete summary panel once test is completed */}
-                       {!loading && results.length > 0 && (
-                         <div className="bg-gradient-to-r from-emerald-950/20 via-slate-900/40 to-slate-950/60 border border-emerald-500/30 p-5 rounded-xl mb-4 space-y-4 shadow-xl select-text">
-                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                             <div className="flex items-center gap-3">
-                               <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-455 rounded-lg flex items-center justify-center">
-                                 <ShieldAlert size={18} />
-                               </div>
-                               <div>
-                                 <h3 className="text-xs font-black text-white font-mono tracking-wider uppercase leading-none">Diagnostic Completed</h3>
-                                 <p className="text-[10px] text-slate-450 mt-1 uppercase font-mono font-bold">Analysis Profile for real life verification</p>
-                               </div>
-                             </div>
-                             
-                             {/* Grade rating calculation */}
-                             {(() => {
-                               const successPct = Math.round((results.filter(r => r.status < 400).length / results.length) * 100);
-                               const avgLat = results.reduce((acc, r) => acc + r.responseTime, 0) / results.length;
-                               const failedAss = results.filter(r => getFailedAssertionsCount(r) > 0).length;
-                               
-                               let grade = "A+";
-                               let gradeColor = "text-emerald-400 border-emerald-500/30 bg-emerald-500/10 shadow-emerald-500/5";
+                    <TestLabResults 
+                      results={results}
+                      loading={loading}
+                      progress={progress}
+                      selectedModule={selectedModule}
+                      assertions={assertions}
+                      percentiles={percentiles}
+                      latencyCategories={latencyCategories}
+                      regionalBreakdown={regionalBreakdown}
+                      securityAudit={securityAudit}
+                      activeModule={activeModule}
+                      selectedResult={selectedResult}
+                      setSelectedResult={setSelectedResult}
+                      payloadTab={payloadTab}
+                      setPayloadTab={setPayloadTab}
+                      logDetailWidth={logDetailWidth}
+                      setIsDraggingLogDetail={setIsDraggingLogDetail}
+                      getFailedAssertionsCount={getFailedAssertionsCount}
+                      handleClearLogs={handleClearLogs}
+                      config={config}
+                    />
 
-                               if (successPct < 80 || failedAss > results.length * 0.4) {
-                                 grade = "F";
-                                 gradeColor = "text-rose-450 border-rose-500/30 bg-rose-500/10 h shadow-rose-500/5";
-                               } else if (avgLat > 600) {
-                                 grade = "D";
-                                 gradeColor = "text-amber-400 border-amber-500/30 bg-amber-500/10 shadow-amber-500/5";
-                               } else if (avgLat > 300) {
-                                 grade = "C";
-                                 gradeColor = "text-amber-300 border-amber-500/20 bg-amber-500/5";
-                               } else if (successPct < 100) {
-                                 grade = "B";
-                                 gradeColor = "text-blue-400 border-blue-500/30 bg-blue-500/10 shadow-blue-500/5";
-                               }
-                               
-                               return (
-                                 <div className="flex items-center gap-4">
-                                   <div className={cn("px-4 py-2 border rounded-xl text-center shadow-md font-sans", gradeColor)}>
-                                     <div className="text-[9px] font-mono font-black text-slate-400 uppercase leading-none mb-0.5 whitespace-nowrap">HEALTH SCORE</div>
-                                     <span className="text-xl font-black font-mono tracking-tighter leading-none">{grade}</span>
-                                   </div>
-                                 </div>
-                               );
-                             })()}
-                           </div>
-                           
-                           {/* Quick stats grid inside report */}
-                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                             <div className="bg-black/40 p-2.5 border border-slate-850 rounded-lg">
-                               <span className="text-[10px] font-mono text-slate-400 font-bold block mb-0.5 uppercase">AVERAGE LATENCY</span>
-                               <span className="text-sm font-black font-mono text-white">
-                                 {(results.reduce((acc, r) => acc + r.responseTime, 0) / results.length || 0).toFixed(0)}ms
-                               </span>
-                             </div>
-                             <div className="bg-black/40 p-2.5 border border-slate-850 rounded-lg">
-                               <span className="text-[10px] font-mono text-slate-400 font-bold block mb-0.5 uppercase">VERIFICATION PASSED</span>
-                               <span className={cn("text-xs font-black font-mono", results.every(r => getFailedAssertionsCount(r) === 0) ? "text-emerald-400" : "text-amber-400")}>
-                                 {results.filter(r => getFailedAssertionsCount(r) === 0).length} / {results.length} PASSED
-                               </span>
-                             </div>
-                             <div className="bg-black/40 p-2.5 border border-slate-850 rounded-lg">
-                               <span className="text-[10px] font-mono text-slate-400 font-bold block mb-0.5 uppercase">90TH PERCENTILE</span>
-                               <span className="text-sm font-black font-mono text-white">{percentiles.p90}ms</span>
-                             </div>
-                             <div className="bg-black/40 p-2.5 border border-slate-850 rounded-lg">
-                               <span className="text-[10px] font-mono text-slate-400 font-bold block mb-0.5 uppercase">99TH PERCENTILE</span>
-                               <span className="text-sm font-black font-mono text-white">{percentiles.p99}ms</span>
-                             </div>
-                           </div>
-
-
-                         </div>
-                       )}
-
-                       {/* Custom QA Security Audit Report Panel */}
-                       {!loading && securityAudit && (
-                         <div className="bg-slate-900/80 border border-rose-500/20 p-5 rounded-xl mb-4 space-y-4 shadow-xl select-text">
-                           <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-                             <div className="flex items-center gap-3">
-                               <div className={cn(
-                                 "p-2 rounded-lg flex items-center justify-center font-black text-[10px] border font-mono select-none leading-none",
-                                 securityAudit.totalAlerts > 0 
-                                   ? "bg-rose-500/10 border-rose-500/30 text-rose-400" 
-                                   : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                )}>
-                                 {securityAudit.totalAlerts > 0 ? "VULNERABLE" : "SECURE PASS"}
-                               </div>
-                               <div>
-                                 <h3 className="text-xs font-black text-white font-mono tracking-wider uppercase leading-none">Vulnerability Compliance Report</h3>
-                                 <p className="text-[10px] text-slate-400 mt-1 uppercase font-mono font-bold leading-none">API Security assessment diagnostic</p>
-                               </div>
-                             </div>
-                             <div className="flex items-center gap-2">
-                               <span className="text-[10px] font-mono text-slate-500 font-bold uppercase leading-none">ALERTS FOUND:</span>
-                               <span className={cn(
-                                 "px-2 py-0.5 rounded font-mono font-black border text-xs leading-none",
-                                 securityAudit.totalAlerts > 0 ? "bg-rose-500/10 border-rose-500/30 text-rose-455" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                )}>
-                                 {securityAudit.totalAlerts}
-                                </span>
-                             </div>
-                           </div>
-
-                           <div className="space-y-3">
-                             {securityAudit.items.map((item, idx) => {
-                               const isPass = item.severity === 'PASS';
-                               return (
-                                 <div key={idx} className={cn(
-                                   "p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-start justify-between gap-4 transition-colors",
-                                   isPass 
-                                     ? "bg-[#090D14]/40 border-slate-850" 
-                                     : item.severity === 'CRITICAL' 
-                                       ? "bg-rose-950/20 border-rose-500/20" 
-                                       : item.severity === 'HIGH'
-                                         ? "bg-rose-950/15 border-rose-500/15"
-                                         : "bg-amber-950/10 border-amber-500/15"
-                                 )}>
-                                   <div className="space-y-1.5 flex-1 select-text">
-                                     <div className="flex items-center gap-2.5 h-4">
-                                       <span className={cn(
-                                         "text-[8px] font-extrabold font-mono px-1.5 py-0.5 rounded uppercase leading-none tracking-wider",
-                                         isPass 
-                                           ? "bg-emerald-500/10 text-emerald-550 border border-emerald-500/20" 
-                                           : item.severity === 'CRITICAL' 
-                                             ? "bg-rose-550 text-black leading-none py-0.5" 
-                                             : item.severity === 'HIGH'
-                                               ? "bg-rose-500/15 text-rose-550 border border-rose-500/25 leading-none"
-                                               : "bg-amber-500/10 text-amber-550 border border-amber-500/25 leading-none"
-                                       )}>
-                                         {item.severity}
-                                       </span>
-                                       <span className="text-xs font-black text-slate-200 font-mono tracking-wide leading-none">{item.name}</span>
-                                     </div>
-                                     <p className="text-xs text-slate-350 leading-relaxed font-sans mt-1">{item.detail}</p>
-                                     {!isPass && (
-                                       <div className="text-[11px] text-slate-400 font-sans border-t border-slate-800/80 pt-1.5 mt-1.5 flex items-start gap-1 font-bold">
-                                         <span className="font-mono font-black text-rose-455 uppercase tracking-tighter shrink-0 text-[10px] [word-spacing:-3px] leading-none">REMEDIATION :</span>
-                                         <span className="leading-relaxed -mt-0.5">{item.recommendation}</span>
-                                       </div>
-                                     )}
-                                   </div>
-                                   <div className={cn(
-                                     "text-[10px] font-mono font-black tracking-wider uppercase px-2.5 py-1 rounded-md shrink-0 border select-none self-start sm:self-auto text-center font-bold",
-                                     isPass 
-                                       ? "bg-emerald-950/10 border-emerald-500/15 text-emerald-500" 
-                                       : "bg-rose-950/20 border-rose-500/25 text-rose-400"
-                                   )}>
-                                     {item.status}
-                                   </div>
-                                 </div>
-                               );
-                             })}
-                           </div>
-                         </div>
-                       )}
-
-                       {/* Latency Distribution Graph always available above logs */}
-                       {results.length > 0 && (
-                         <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl mb-4 space-y-4">
-                           <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                               <BarChart4 size={14} className="text-emerald-400" />
-                               <span className="text-xs font-black tracking-wider text-slate-300 font-mono uppercase">Telemetry Response Latency Distribution</span>
-                             </div>
-                             <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">In-Transit Allocation</span>
-                           </div>
-
-                           <div className="grid grid-cols-4 gap-2 text-center select-none">
-                             {[
-                               { label: 'FAST', limit: '<150ms', color: 'bg-emerald-500 shadow-emerald-550/15', ...latencyCategories.fast },
-                               { label: 'NOMINAL', limit: '150-450ms', color: 'bg-blue-500 shadow-blue-550/15', ...latencyCategories.acceptable },
-                               { label: 'SLOW', limit: '450-1000ms', color: 'bg-amber-500 shadow-amber-550/15', ...latencyCategories.slow },
-                               { label: 'LAGGING', limit: '>1000ms', color: 'bg-rose-500 shadow-rose-550/15', ...latencyCategories.lagging }
-                             ].map((cat) => (
-                               <div key={cat.label} className="bg-black/50 p-2 border border-slate-850/80 rounded-lg flex flex-col justify-between">
-                                 <div>
-                                   <div className="text-[10px] font-mono text-slate-300 uppercase font-black">{cat.label}</div>
-                                   <div className="text-[9px] font-mono text-slate-500 font-semibold">{cat.limit}</div>
-                                 </div>
-                                 <div className="my-2.5 flex items-end justify-center h-12 bg-slate-950/40 rounded-md p-1 border border-slate-900/50">
-                                   <div 
-                                     style={{ height: `${Math.max(4, cat.pct)}%` }}
-                                     className={cn("w-full max-w-[16px] rounded-sm transition-all duration-300 shadow", cat.color)}
-                                   />
-                                 </div>
-                                 <div>
-                                   <div className="text-sm font-black font-mono text-white">{cat.count}</div>
-                                   <div className="text-[10px] font-mono text-slate-400 font-extrabold bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 mt-1">{cat.pct}%</div>
-                                 </div>
-                               </div>
-                             ))}
-                           </div>
-                         </div>
-                       )}
-
-                        {/* Geographical Simulation Nodes Metrics Breakdown (Exclusive for Distributed load test mode) */}
-                        {selectedModule === 'distributed' && regionalBreakdown && results.length > 0 && (
-                          <div className="bg-slate-900/60 border border-slate-850 p-4 rounded-xl mb-4 space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
-                              <div className="flex items-center gap-2">
-                                <Globe size={14} className="text-violet-400 animate-pulse" />
-                                <span className="text-xs font-black tracking-wider text-slate-300 font-mono uppercase">Geographical Routing Quality Metrics</span>
-                              </div>
-                              <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">Node Breakdown</span>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
-                              {regionalBreakdown.map(region => {
-                                const isRegionActive = region.count > 0;
-                                return (
-                                  <div 
-                                    key={region.id} 
-                                    className={cn(
-                                      "p-3 rounded-lg border flex items-center justify-between",
-                                      isRegionActive 
-                                        ? "bg-black/60 border-violet-500/20 shadow-sm animate-in fade-in duration-300" 
-                                        : "bg-black/20 border-slate-900 opacity-40"
-                                    )}
-                                  >
-                                    <div className="space-y-1">
-                                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                                        <span>{region.flag}</span>
-                                        <span className="truncate max-w-[150px]">{region.label}</span>
-                                      </div>
-                                      <div className="text-[10px] text-slate-500 font-bold">
-                                        LOAD: <span className="text-violet-400 font-black">{region.count} REQS</span>
-                                      </div>
-                                    </div>
-                                    <div className="text-right space-y-1 shrink-0">
-                                      <div className="text-xs font-black text-amber-400">
-                                        {region.avgTime > 0 ? `~${region.avgTime}ms` : '—'}
-                                      </div>
-                                      {region.count > 0 ? (
-                                        <div className={cn(
-                                          "text-[9px] font-black border rounded px-1.5 py-0.5 inline-block uppercase",
-                                          region.successPct >= 90 
-                                            ? "text-emerald-400 border-emerald-950 bg-emerald-950/20"
-                                            : "text-rose-400 border-rose-950 bg-rose-950/20"
-                                        )}>
-                                          {region.successPct}% PASS
-                                        </div>
-                                      ) : (
-                                        <div className="text-[9px] text-slate-600 font-bold">INACTIVE</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                       {results.length === 0 && !loading && (
-                         <div className="h-full flex flex-col items-center justify-center p-20 opacity-40 text-center space-y-4">
-                           <div className="w-16 h-16 border border-slate-700 border-dashed rounded-full flex items-center justify-center animate-spin-slow">
-                              <Activity size={24} className="text-emerald-400" />
-                           </div>
-                           <div className="uppercase tracking-widest font-mono text-xs text-white font-black">Standby Stream Init</div>
-                           <p className="text-xs text-slate-350 max-w-sm leading-relaxed font-sans">
-                             Press <span className="font-bold text-emerald-400">"INITIATE STRESS SEQUENCE"</span> or click on a Preset to dispatch mock concurrent workflows and verify endpoints.
-                           </p>
-                         </div>
-                       )}
-
-                       {[...results].reverse().map((res, i) => {
-                         const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : (progress?.completed ?? results.length) - i;
-                         const isSelected = selectedResult?.id === res.id;
-                         const fails = getFailedAssertionsCount(res);
-                         const passedAll = fails === 0;
-                         const rt = res.responseTime;
-                         const tag = rt < 150 
-                           ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
-                           : rt < 450 
-                             ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
-                             : rt < 1000 
-                               ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }
-                               : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-455 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
-                         return (
-                           <div 
-                             key={res.id} 
-                             onClick={() => setSelectedResult(res)}
-                             className={cn(
-                               "group flex border-l-4 py-3 pl-4 pr-3.5 rounded-lg transition-all cursor-pointer items-center min-h-[44px] select-none text-xs font-mono mb-1.5",
-                               isSelected 
-                                 ? "bg-slate-800 text-white border-emerald-500 shadow-md" 
-                                 : passedAll 
-                                   ? "border-slate-850 hover:border-emerald-500/70 hover:bg-[#10b981]/10 bg-black/20"
-                                   : "border-rose-950 hover:border-rose-500/70 hover:bg-rose-500/5 bg-rose-950/10"
-                             )}
-                           >
-                             <span className="text-slate-400 w-20 shrink-0 font-bold group-hover:text-amber-400 transition-colors">➔ {rt}ms</span>
-                             <span className={cn("w-14 font-black", res.status < 300 ? "text-emerald-400" : "text-rose-400")}>
-                               [{res.status}]
-                             </span>
-                             <span className="text-slate-200 flex-1 truncate uppercase tracking-tight group-hover:text-white transition-colors">
-                               <span className="text-slate-500 opacity-90 mr-2 font-bold">#{currentIdx}</span>
-                               {selectedModule === 'fuzzer' && <span className="text-cyan-400 font-extrabold mr-1.5">[MUTATED]</span>}
-                               {selectedModule === 'replay' && <span className="text-blue-400 font-extrabold mr-1.5">[CLONED]</span>}
-                               {selectedModule === 'chaos' && <span className="text-rose-455 font-extrabold mr-1.5">[CORRUPTED]</span>}
-                               {res.simulatedIp ? (
-                                  <span className="text-violet-400 font-extrabold mr-1.5 inline-flex items-center gap-1.5">
-                                    <Globe size={11} className="text-violet-400 animate-pulse" />
-                                    [DISTRIBUTED] {res.simulatedFlag} {res.simulatedIp} <span className="text-slate-500 font-black text-[9px]">({res.simulatedRegion?.split(' ')[0]})</span>
-                                  </span>
-                                ) : (
-                                  activeModule.name
-                                )}
-                             </span>
-                             <div className="flex items-center shrink-0 ml-2 gap-1.5">
-                               <span className={cn("text-[8px] font-black tracking-wider px-2 py-0.5 rounded uppercase font-mono border", tag.color)}>
-                                 {tag.label}
-                               </span>
-                                {(res as any).retriesApplied !== undefined && (
-                                  <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30 font-mono tracking-wider flex items-center gap-1">
-                                    <Repeat size={10} className="animate-spin" /> {(res as any).retriesApplied}R
-                                  </span>
-                                )}
-                               {passedAll ? (
-                                 <span className="text-[10px] font-black text-emerald-400 uppercase font-mono bg-emerald-500/15 px-2.5 py-0.5 rounded border border-emerald-500/30">
-                                   ✓ PASS
-                                 </span>
-                               ) : (
-                                 <span className="text-[10px] font-black text-rose-400 uppercase font-mono bg-rose-500/15 px-2.5 py-0.5 rounded border border-rose-500/30 flex items-center gap-1">
-                                   ✗ FAIL ({fails})
-                                 </span>
-                               )}
-                             </div>
-                           </div>
-                         );
-                       })}
-                    </div>
-
-                    {/* Side-by-Side inline description details */}
+                    {/* Collapsible log detail side panel */}
                     {selectedResult && (
-                      <div 
-                        style={{ width: typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : `${logDetailWidth}px` }}
-                        className="w-full lg:w-auto border-l border-slate-800 bg-[#0F1115] flex flex-col overflow-hidden shrink-0 shadow-2xl relative z-10 animate-in fade-in slide-in-from-right-5 duration-150"
-                      >
-                        {/* Desktop Drag Handle */}
-                        <div 
-                          onMouseDown={() => setIsDraggingLogDetail(true)}
-                          className="hidden lg:flex absolute left-0 top-0 bottom-0 w-1.5 bg-[#12161E] hover:bg-emerald-500 cursor-col-resize items-center justify-center transition-all z-20 group"
-                          title="Drag to resize Log Detail panel"
-                        >
-                          <div className="w-[2px] h-14 bg-slate-700 group-hover:bg-emerald-300 rounded" />
-                        </div>
-
-                        <div className="p-4 bg-black flex items-center justify-between border-b border-slate-800 pl-6 lg:pl-8">
-                          <div className="flex items-center gap-2">
-                             <span className="text-xs font-mono font-black px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">LOG DETAIL</span>
-
-                          </div>
-                          <button 
-                            onClick={() => setSelectedResult(null)}
-                            className="text-slate-400 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition-all cursor-pointer"
-                          >
-                            <X size={15} />
-                          </button>
-                        </div>
-
-                        <div className="p-5 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-200 space-y-5">
-                           {selectedResult.simulatedIp && (
-                             <div className="bg-violet-950/20 p-3.5 rounded-lg border border-violet-500/30 space-y-2 animate-in fade-in zoom-in-95 duration-150 mb-4">
-                               <div className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-1.5">
-                                 <Globe size={12} /> Simulated Origin Edge Node
-                               </div>
-                               <div className="grid grid-cols-2 gap-3 text-[11px]">
-                                 <div>
-                                   <span className="text-slate-500 font-bold block mb-1 text-[9px]">IP ADDRESS</span>
-                                   <div className="text-white font-bold select-all">{selectedResult.simulatedIp}</div>
-                                 </div>
-                                 <div>
-                                   <span className="text-slate-500 font-bold block mb-1 text-[9px]">LOCATION</span>
-                                   <div className="text-white font-extrabold">{selectedResult.simulatedFlag} {selectedResult.simulatedCountry}</div>
-                                 </div>
-                               </div>
-                               <div className="text-[10px] text-slate-500 border-t border-violet-500/10 pt-2 font-bold flex items-center justify-between">
-                                 <span>ROUTING:</span>
-                                 <span className="text-violet-300 font-black">{selectedResult.simulatedRegion}</span>
-                               </div>
-                             </div>
-                           )}
-
-                          {/* Compact Telemetry Dashboard */}
-                          <div className="grid grid-cols-4 gap-2 bg-[#090B0E] p-2.5 rounded-lg border border-slate-800/80">
-                             <div className="flex flex-col justify-between py-1 px-2 border-r border-slate-800/60 last:border-0">
-                                <span className="text-slate-500 text-[9px] uppercase font-black tracking-wider block">Status</span>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className={cn("text-xs font-black font-mono", selectedResult.status < 300 ? "text-emerald-400" : "text-rose-400")}>
-                                    {selectedResult.status}
-                                  </span>
-                                  {(selectedResult as any).retriesApplied !== undefined && (selectedResult as any).retriesApplied > 0 && (
-                                    <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 px-1 rounded border border-amber-550/20" title={`${(selectedResult as any).retriesApplied} retries applied`}>
-                                      R:{(selectedResult as any).retriesApplied}
-                                    </span>
-                                  )}
-                                </div>
-                             </div>
-                             <div className="flex flex-col justify-between py-1 px-2 border-r border-slate-800/60 last:border-0">
-                                <span className="text-slate-500 text-[9px] uppercase font-black tracking-wider block">Latency</span>
-                                <span className="text-xs font-black font-mono text-blue-400 mt-0.5">{selectedResult.responseTime}ms</span>
-                             </div>
-                             <div className="flex flex-col justify-between py-1 px-2 border-r border-slate-800/60 last:border-0">
-                                <span className="text-slate-500 text-[9px] uppercase font-black tracking-wider block">Req Size</span>
-                                <span className="text-xs font-black font-mono text-slate-300 mt-0.5">
-                                  {selectedResult.requestSize !== undefined && selectedResult.requestSize > 0 ? (
-                                    selectedResult.requestSize > 1024 ? `${(selectedResult.requestSize / 1024).toFixed(1)} KB` : `${selectedResult.requestSize} B`
-                                  ) : '0 B'}
-                                </span>
-                             </div>
-                             <div className="flex flex-col justify-between py-1 px-2 last:border-0">
-                                <span className="text-slate-505 text-[9px] uppercase font-black tracking-wider block">Res Size</span>
-                                <span className="text-xs font-black font-mono text-emerald-500/95 mt-0.5">
-                                  {(() => {
-                                    const bodyLen = selectedResult.body ? selectedResult.body.length : 0;
-                                    return bodyLen > 1024 ? `${(bodyLen / 1024).toFixed(1)} KB` : `${bodyLen} B`;
-                                  })()}
-                                </span>
-                             </div>
-                          </div>
-
-
-                          <div className="space-y-2 flex-grow">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5 select-none">
-                           {selectedResult.status === 429 && (
-                             <div className="bg-rose-950/20 p-4 rounded-lg border border-rose-500/30 space-y-3.5 select-text mb-4">
-                               <div className="text-[10px] font-black text-rose-450 uppercase tracking-widest flex items-center gap-1.5 font-mono">
-                                 <ShieldAlert size={14} className="text-rose-400" /> API THROTTLING DETECTION (HTTP 429)
-                               </div>
-                               <div className="text-[10.5px] text-slate-350 leading-relaxed space-y-2 font-sans select-text">
-                                 <p>
-                                   The target server responded with <span className="text-white font-bold select-all font-mono">Too Many Requests (429)</span>. Even though client proxy headers are randomized dynamically, the server has rejected the test requests.
-                                 </p>
-                                 <p className="font-bold text-rose-300">
-                                   Why is this happening in NestJS / Express?
-                                 </p>
-                                 <ul className="list-disc pl-4 space-y-1 text-slate-400 text-[10px]">
-                                   <li>
-                                     <strong className="text-slate-200">Disabled 'trust proxy':</strong> By default, Express/Fastify NestJS bootstrap models completely ignore <span className="text-slate-300 font-mono">X-Forwarded-For</span> headers unless proxy-trusting is explicitly enabled. The throttler then falls back to our physical container IP.
-                                   </li>
-                                   <li>
-                                     <strong className="text-slate-200">Upstream CDN Restrictions:</strong> Edge reverse proxies (e.g., Cloudflare, AWS CloudFront) filter out or overwrite incoming client-spoofing headers for safety before reaching your app.
-                                   </li>
-                                 </ul>
-                                 <div className="bg-black/60 p-2.5 rounded border border-rose-500/15 text-[9.5px] font-mono text-amber-350 space-y-1.5 leading-snug">
-                                   <div className="text-slate-500 font-bold select-none">// NestJS (Express) Rate Limitation Fix:</div>
-                                   <div>
-                                     app.getHttpAdapter().getInstance().set(&apos;trust proxy&apos;, true);
-                                   </div>
-                                   <div className="text-slate-500 font-bold select-none mt-2">// NestJS (Fastify) Rate Limitation Fix:</div>
-                                   <div>
-                                     {"const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }));"}
-                                   </div>
-                                 </div>
-                               </div>
-                             </div>
-                           )}
-
-                              <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block">Response</span>
-                              <div className="flex gap-1 bg-black/60 p-0.5 rounded border border-slate-800/80">
-                                <button
-                                  onClick={() => setPayloadTab('pretty')}
-                                  className={cn(
-                                    "px-2 py-0.5 rounded text-[10px] font-black font-mono transition-all cursor-pointer",
-                                    payloadTab === 'pretty'
-                                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
-                                      : "text-slate-500 hover:text-slate-300 border border-transparent"
-                                  )}
-                                >
-                                  PRETTY
-                                </button>
-                                <button
-                                  onClick={() => setPayloadTab('raw')}
-                                  className={cn(
-                                    "px-2 py-0.5 rounded text-[10px] font-black font-mono transition-all cursor-pointer",
-                                    payloadTab === 'raw'
-                                      ? "bg-slate-800/80 text-slate-205 border border-slate-700/60"
-                                      : "text-slate-500 hover:text-slate-300 border border-transparent"
-                                  )}
-                                >
-                                  RAW
-                                </button>
-                              </div>
-                            </div>
-                            <div className="bg-black/35 p-3.5 rounded-lg border border-slate-800 text-xs text-emerald-450/90 min-h-[360px] max-h-[750px] overflow-y-auto custom-scrollbar select-text space-y-3">
-                              {payloadTab === 'pretty' ? (() => {
-                                 const bodyStr = (selectedResult.body || '').trim();
-                                 if (!bodyStr) {
-                                   return (
-                                     <div className="text-slate-500 italic text-xs">
-                                       Empty Response
-                                     </div>
-                                   );
-                                 }
-
-                                 // HTML or SVG/Image Previews
-                                 const contentType = (selectedResult.headers['content-type'] || selectedResult.headers['Content-Type'] || '').toLowerCase();
-                                 if (contentType.includes('text/html') || bodyStr.startsWith('<!DOCTYPE') || bodyStr.startsWith('<html') || bodyStr.startsWith('<div')) {
-                                   return (
-                                     <div className="space-y-2">
-                                       <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded">
-                                         <span className="font-bold text-emerald-400 flex items-center gap-1">
-                                           <Layout size={10} /> sandboxed_html_frame
-                                         </span>
-                                       </div>
-                                       <iframe 
-                                         title="HTML Response Preview"
-                                         srcDoc={selectedResult.body || ''} 
-                                         sandbox="allow-scripts" 
-                                         loading="lazy"
-                                         className="w-full h-80 bg-white rounded-lg border border-slate-805"
-                                       />
-                                     </div>
-                                   );
-                                 }
-
-                                 if (contentType.includes('image/') || bodyStr.startsWith('<svg')) {
-                                   return (
-                                     <div className="space-y-2">
-                                       <div className="flex justify-between items-center text-[9px] text-slate-550 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded">
-                                         <span className="font-bold text-blue-400 flex items-center gap-1">
-                                           <Activity size={10} /> rendered_asset
-                                         </span>
-                                       </div>
-                                       <div className="flex items-center justify-center p-4 bg-slate-950/60 border border-slate-900 rounded-lg min-h-[240px]">
-                                         {bodyStr.startsWith('<svg') ? (
-                                           <div dangerouslySetInnerHTML={{ __html: selectedResult.body || '' }} className="max-w-full max-h-[300px]" />
-                                         ) : (
-                                           <img 
-                                             src={bodyStr.startsWith('data:') ? bodyStr : `data:${contentType};base64,${bodyStr}`} 
-                                             alt="Response Asset" 
-                                             className="max-w-full max-h-[300px] object-contain border border-slate-850 rounded" 
-                                             referrerPolicy="no-referrer"
-                                           />
-                                         )}
-                                       </div>
-                                     </div>
-                                   );
-                                 }
-
-                                 try {
-                                   const json = JSON.parse(bodyStr);
-                                   return (
-                                     <div className="space-y-2 select-text font-mono">
-                                       <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded select-none">
-                                         <span className="font-bold text-emerald-500 flex items-center gap-1">
-                                           <FileJson size={10} /> Response
-                                         </span>
-
-                                       </div>
-                                       <div className="bg-slate-950/30 border border-slate-900/60 p-2.5 rounded-lg overflow-x-auto max-h-[650px] custom-scrollbar text-emerald-100/90 leading-relaxed text-xs">
-                                         <LabJsonInteractiveNode val={json} isLast={true} />
-                                       </div>
-                                     </div>
-                                   );
-                                 } catch {
-                                   // Beautiful fallback text container
-                                   return (
-                                     <pre className="text-emerald-455/90 whitespace-pre-wrap overflow-x-hidden min-h-[140px] max-h-[650px] overflow-y-auto custom-scrollbar select-all text-xs font-mono">
-                                       {selectedResult.body}
-                                     </pre>
-                                   );
-                                 }
-                               })() : (
-                                 <pre className="text-emerald-455/95 whitespace-pre-wrap overflow-x-hidden min-h-[140px] max-h-[650px] overflow-y-auto custom-scrollbar select-all leading-relaxed text-xs font-mono">
-                                   {selectedResult.body || 'Empty Response.'}
-                                 </pre>
-                               )}
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block border-b border-slate-800 pb-1.5">Response Headers</span>
-                            <div className="bg-black p-3.5 rounded-lg border border-slate-800 space-y-2 h-40 overflow-y-auto text-xs text-slate-300 custom-scrollbar select-text">
-                              {Object.entries(selectedResult.headers).map(([k, v]) => (
-                                <div key={k} className="flex flex-col gap-0.5 border-b border-slate-900 pb-1.5">
-                                  <span className="text-blue-400 font-extrabold uppercase text-[10px]">{k}:</span>
-                                  <span className="text-slate-200 break-all pl-1 select-all">{v}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <TestLabResultDetail 
+                        selectedResult={selectedResult}
+                        setSelectedResult={setSelectedResult}
+                        payloadTab={payloadTab}
+                        setPayloadTab={setPayloadTab}
+                        logDetailWidth={logDetailWidth}
+                        setIsDraggingLogDetail={setIsDraggingLogDetail}
+                        config={config}
+                      />
                     )}
                   </div>
                 )}
@@ -2084,193 +784,11 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                   </motion.div>
                 )}
 
-                {labTab === 'theory' && (() => {
-                  const framework = THEORETICAL_FRAMEWORKS[activeModule.id] || {
-                    problem: "System components must withstand unexpected volumes or structural requests. Under high pressure, system boundary limits leak raw thread failures or state corruption.",
-                    solution: "Systematically stress endpoints under isolated test protocols to measure threshold boundaries prior to production exposure.",
-                    realLifeExample: "Normal production spikes triggering unexpected service failures due to lack of pre-production validation.",
-                    staffEngineeringDepth: "Implement strict timeout margins, secure error handling routines, and dynamic query bounds on all mutable actions."
-                  };
-
-                  return (
-                    <motion.div 
-                      key="theoryTab"
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
-                      className="absolute inset-0 p-6 md:p-8 overflow-y-auto custom-scrollbar bg-[#07090C] select-text"
-                    >
-                       <div className="max-w-4xl mx-auto space-y-6">
-                          
-                          {/* Section Header */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-                            <div className="flex items-center gap-3">
-                              <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg border",
-                                activeModule.id === 'security_audit' || activeModule.id === 'chaos'
-                                  ? "bg-rose-500/10 border-rose-500/20 text-rose-455"
-                                  : "bg-emerald-500/10 border-emerald-500/20 text-emerald-450"
-                              )}>
-                                {activeModule.icon}
-                              </div>
-                              <div>
-                                <h2 className="text-sm font-black text-white font-mono tracking-wider uppercase leading-none">{activeModule.name}</h2>
-                                <p className="text-[10px] text-slate-400 mt-1 uppercase font-mono font-bold leading-none">Theoretical Attack & Safety Framework</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-mono font-black border border-slate-800 px-2 py-1 bg-black rounded text-slate-400 uppercase tracking-widest">
-                                {activeModule.strategy}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Quick Summary Banner */}
-                          <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-850/60 leading-relaxed font-sans text-xs md:text-sm text-slate-300">
-                            <span className="font-mono text-emerald-400 font-black mr-2 uppercase tracking-wide">CORE PARADIGM:</span>
-                            {activeModule.theory}
-                          </div>
-
-                          {/* 2x2 Grid for Problem/Solution and Real-World Examples */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            
-                            {/* Card 1: The Problem (Vulnerability) */}
-                            <div className="bg-[#090D14] border border-rose-950/35 rounded-xl p-5 hover:border-rose-900/30 transition-colors flex flex-col justify-between">
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-rose-400">
-                                  <AlertTriangle size={15} />
-                                  <span className="text-xs font-black font-mono uppercase tracking-widest">The Production Underworld (The Problem)</span>
-                                </div>
-                                <p className="text-xs text-slate-350 leading-relaxed font-sans select-text">
-                                  {framework.problem}
-                                </p>
-                              </div>
-                              <div className="mt-4 pt-3 border-t border-slate-900/50 flex justify-between items-center text-[10px] text-rose-500/80 font-mono font-bold">
-                                <span>THREAT SIGNATURE: CRITICAL EXCESS</span>
-                                <span>STATUS: DANGER</span>
-                              </div>
-                            </div>
-
-                            {/* Card 2: The Solution (Mitigation) */}
-                            <div className="bg-[#090D14] border border-emerald-950/35 rounded-xl p-5 hover:border-emerald-900/30 transition-colors flex flex-col justify-between">
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-emerald-400">
-                                  <Beaker size={15} />
-                                  <span className="text-xs font-black font-mono uppercase tracking-widest">Engineering Mitigation (The Solution)</span>
-                                </div>
-                                <p className="text-xs text-slate-350 leading-relaxed font-sans select-text">
-                                  {framework.solution}
-                                </p>
-                              </div>
-                              <div className="mt-4 pt-3 border-t border-slate-900/50 flex justify-between items-center text-[10px] text-emerald-500/80 font-mono font-bold">
-                                <span>MITIGATION SEQUENCE: SHIELD-INIT</span>
-                                <span>STATUS: DEPLOYED</span>
-                              </div>
-                            </div>
-
-                          </div>
-
-                          {/* Real World Production Incident Case Study */}
-                          <div className="bg-[#0F1217]/50 border border-slate-850/80 rounded-xl p-5 space-y-3 select-text">
-                            <div className="flex items-center gap-2 text-blue-400 border-b border-slate-800/50 pb-2">
-                              <Terminal size={14} />
-                              <span className="text-xs font-black font-mono uppercase tracking-widest">Real-World Incident Analysis</span>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-xs text-white leading-relaxed font-sans font-bold">
-                                Production Impact Scenario:
-                              </p>
-                              <p className="text-xs text-slate-350 leading-relaxed font-sans italic border-l-2 border-slate-700 pl-3">
-                                "{framework.realLifeExample}"
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Staff-Level Architecture Guide */}
-                          <div className="bg-gradient-to-r from-emerald-990/10 to-transparent border border-emerald-500/20 rounded-xl p-5 space-y-3.5 shadow-lg select-text">
-                            <div className="flex items-center gap-2.5 text-emerald-400">
-                              <Layout size={15} />
-                              <span className="text-xs font-black font-mono uppercase tracking-widest">Architectural Guardrails (Staff Engineering Depth)</span>
-                            </div>
-                            <p className="text-xs text-slate-300 leading-relaxed font-sans font-bold">
-                              How to scale protection cleanly:
-                            </p>
-                            <p className="text-xs text-slate-350 leading-relaxed font-sans font-medium">
-                              {framework.staffEngineeringDepth}
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-emerald-500/10 text-[10px] font-mono text-slate-400">
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                <span>Zero-Trust validation checkpoints</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                <span>Auto-remediation telemetry patterns</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Distributed Rate-Limiting Info Box inside Theoretical Framework */}
-                          {activeModule.id === 'distributed' && (
-                            <div className="p-5 bg-indigo-950/15 border border-indigo-500/20 rounded-xl space-y-3 text-xs leading-relaxed select-text">
-                              <div className="text-indigo-400 font-bold uppercase tracking-wider font-mono flex items-center gap-2">
-                                <Info size={14} className="text-indigo-400 animate-pulse" /> Sandboxed Distributed Throttling Mechanics
-                              </div>
-                              <p className="text-slate-300 font-sans">
-                                Client-level rate limit controllers filter request spikes mapped to individual client IP addresses. Under normal load testing rules, your execution container has only one source IP, triggering local throttling models in milliseconds (e.g. 429 Too Many Requests).
-                              </p>
-                              <p className="text-slate-300 font-sans">
-                                <strong>Multi-client Proxy Header Rotation:</strong> To solve this, the distributed engine dynamically injects realistic geolocated client IPs via proxy headers like <code className="text-indigo-350 bg-black px-1.5 py-0.5 rounded font-mono">X-Forwarded-For</code> and <code className="text-indigo-350 bg-black px-1.5 py-0.5 rounded font-mono">X-Real-IP</code>.
-                              </p>
-                              <p className="text-slate-400 font-sans text-[11px] leading-relaxed italic border-t border-indigo-950/50 pt-2">
-                                *Note: To successfully demonstrate this in your custom APIs, configure a trusted-proxy setup (like <code className="text-slate-300 bg-black px-1 py-0.5 rounded font-mono">app.set('trust proxy', true)</code> in Express) to correctly recognize split IP addresses.
-                              </p>
-                            </div>
-                          )}
-
-                       </div>
-                    </motion.div>
-                  );
-                })()}
+                {labTab === 'theory' && (
+                  <TestLabTheory activeModule={activeModule} />
+                )}
              </AnimatePresence>
           </div>
-
-          {/* Progress gauge area */}
-          {progress && (
-            <div className="bg-[#0F1115] border-t border-slate-800 p-5 space-y-3 shrink-0 select-none">
-               <div className="flex justify-between text-xs font-black uppercase font-mono tracking-wider relative">
-                  <span className="text-emerald-400 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    STRESS RUNNING ACTIVE_PROBE
-                  </span>
-                  <span className="text-white">
-                     {progress.completed} <span className="text-slate-500">/</span> {progress.total} Completed
-                  </span>
-               </div>
-               <div className="h-2 bg-slate-950 rounded-full overflow-hidden p-[1px] border border-slate-800">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(progress.completed / progress.total) * 100}%` }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 45 }}
-                  />
-               </div>
-               <div className="flex gap-4 text-xs font-mono font-bold">
-                 <div className="flex-1 bg-black/50 rounded-lg p-2.5 border border-slate-800 flex flex-col items-center justify-center">
-                    <span className="text-[10px] text-slate-450 uppercase tracking-wider mb-1 font-bold">RPS RATE</span>
-                    <span className="text-emerald-400 text-sm font-black">{((progress.completed / ((Date.now() - (progress as any).startTime || 1) / 1000)).toFixed(1))}</span>
-                 </div>
-                 <div className="flex-1 bg-black/50 rounded-lg p-2.5 border border-slate-800 flex flex-col items-center justify-center">
-                    <span className="text-[10px] text-slate-450 uppercase tracking-wider mb-1 font-bold">EST TIME DUE</span>
-                    <span className="text-blue-400 text-sm font-black">~{Math.max(0, Math.round((progress.total - progress.completed) / ( (progress.completed || 1) / ((Date.now() - (progress as any).startTime || 1) / 1000) )))}s</span>
-                 </div>
-                 <div className="flex-1 bg-black/50 rounded-lg p-2.5 border border-slate-800 flex flex-col items-center justify-center">
-                    <span className="text-[10px] text-slate-450 uppercase tracking-wider mb-1 font-bold">P95 LATENCY</span>
-                    <span className="text-amber-400 text-sm font-black">{results.length > 0 ? results[Math.floor(results.length * 0.95)]?.responseTime || '0' : '0'}ms</span>
-                 </div>
-               </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
