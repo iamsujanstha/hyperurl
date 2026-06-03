@@ -181,8 +181,8 @@ export function ApiClientWorkspace({
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-[10px] font-black font-mono transition-all uppercase tracking-wider cursor-pointer active:scale-95",
                       isActive
-                        ? "bg-slate-205 text-black shadow font-bold"
-                        : "bg-transparent text-slate-500 hover:text-slate-200 hover:bg-[#12161F]"
+                        ? "bg-slate-800 text-emerald-400 border border-emerald-500/25 shadow-sm font-bold"
+                        : "bg-transparent text-slate-500 hover:text-slate-200 hover:bg-slate-900/40"
                     )}
                   >
                     {mode}
