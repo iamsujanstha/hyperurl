@@ -3,9 +3,9 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
-import { CurlEngine, RequestConfig } from "./src/server/modules/curl-engine";
-import { RequestRunner, BatchConfig } from "./src/server/modules/runner";
-import { Store } from "./src/server/modules/store";
+import { CurlEngine, RequestConfig } from "./modules/curl-engine";
+import { RequestRunner, BatchConfig } from "./modules/runner";
+import { Store } from "./modules/store";
 
 async function startServer() {
   await Store.init();
