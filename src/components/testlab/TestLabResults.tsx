@@ -65,89 +65,9 @@ export function TestLabResults({
   config
 }: TestLabResultsProps): React.JSX.Element {
 
-  const [balance, setBalance] = React.useState<number | null>(null);
-  const [isResetting, setIsResetting] = React.useState(false);
-
-  const fetchBalance = React.useCallback(async () => {
-    try {
-      const res = await fetch('/api/race-demo/balance');
-      const data = await res.json();
-      if (typeof data.balance === 'number') {
-        setBalance(data.balance);
-      }
-    } catch (e) {
-      console.error("Error reading balance:", e);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (selectedModule === 'race' || (config.url && (config.url.includes('orders') || config.url.includes('race-demo')))) {
-      fetchBalance();
-      const timer = setInterval(fetchBalance, 1500);
-      return () => clearInterval(timer);
-    }
-  }, [selectedModule, config.url, fetchBalance]);
-
-  React.useEffect(() => {
-    if (selectedModule === 'race' || (config.url && (config.url.includes('orders') || config.url.includes('race-demo')))) {
-      fetchBalance();
-    }
-  }, [results, progress, selectedModule, config.url, fetchBalance]);
-
-  const handleResetBalance = async () => {
-    setIsResetting(true);
-    try {
-      await fetch('/api/race-demo/reset', { method: 'POST' });
-      await fetchBalance();
-    } catch (e) {
-      console.error("Error resetting ledger:", e);
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
   return (
     <div className="flex-grow overflow-y-auto p-5 custom-scrollbar space-y-2 bg-[#050608]/50">
        
-       {/* Live Atomic Ledger state monitor for Race conditions */}
-       {(selectedModule === 'race' || (config.url && (config.url.includes('orders') || config.url.includes('race-demo')))) && (
-         <div className="bg-[#090D14] border border-violet-500/20 p-4 rounded-xl mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl select-none relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
-           <div className="flex items-center gap-3 relative z-10">
-             <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center font-bold">
-               <Repeat size={16} className={cn(loading ? "animate-spin text-emerald-400" : "")} />
-             </div>
-             <div>
-               <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-100 font-mono">Live Transactional Storage Monitor</h4>
-               <p className="text-[9px] text-slate-455 mt-0.5 uppercase font-mono font-bold">Shared Database State (Simulated Race-Condition Sandbox)</p>
-             </div>
-           </div>
-
-           <div className="flex items-center gap-3 relative z-10 shrink-0">
-             <div className="py-2.5 px-4 bg-black border border-slate-800 rounded-lg flex flex-col items-center min-w-[120px]">
-               <span className="text-[8px] font-black font-mono text-slate-500 tracking-wider">LEDGER_BALANCE</span>
-               <span className={cn(
-                 "text-sm font-black font-mono tracking-tight mt-0.5 transition-colors",
-                 balance === null ? "text-slate-600" :
-                 balance < 0 ? "text-rose-400 animate-pulse" :
-                 balance === 0 ? "text-amber-400" : "text-emerald-400"
-               )}>
-                 {balance === null ? "FETCHING..." : `$${balance.toLocaleString()}`}
-               </span>
-             </div>
-
-             <button
-               type="button"
-               onClick={handleResetBalance}
-               disabled={isResetting}
-               className="px-3.5 h-[46px] text-[10px] font-mono rounded-lg bg-slate-900 border border-slate-805 text-slate-350 hover:text-white hover:border-violet-500 hover:bg-slate-950 transition-all font-black select-none cursor-pointer flex items-center justify-center"
-             >
-               <span>{isResetting ? "RESETTING..." : "RESET_LEDGER"}</span>
-             </button>
-           </div>
-         </div>
-       )}
-
        {/* Assessment Diagnostics complete summary panel once test is completed */}
        {!loading && results.length > 0 && (
          <div className="bg-gradient-to-r from-emerald-950/20 via-slate-900/40 to-slate-950/60 border border-emerald-500/30 p-5 rounded-xl mb-4 space-y-4 shadow-xl select-text">
