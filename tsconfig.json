@@ -19,7 +19,7 @@
       "@/*": [
         "./frontend/src/*"
       ],
-      "@/server/*": [
+      "@backend/*": [
         "./backend/*"
       ]
     },
