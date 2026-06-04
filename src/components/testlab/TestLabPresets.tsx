@@ -28,9 +28,56 @@ export function TestLabPresets({
   setSelectedModule,
   selectedPresetId
 }: TestLabPresetsProps): React.JSX.Element {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
   const [showPresets, setShowPresets] = useState(false);
 
   const presets = [
+    {
+      id: 'PRESET_RACE_BROKEN',
+      name: 'Trade Collision (Thread-Unsafe / Broken)',
+      desc: 'Floods a mock banking ledger possessing a deferred write window, causing a double-withdrawal overdraft (negative balance!).',
+      icon: <ShieldAlert size={12} className="text-red-500 animate-pulse" />,
+      setup: () => {
+        if (onChangeConfig) {
+          onChangeConfig({
+            method: 'POST',
+            url: `${origin}/api/orders/broken/place`,
+            body: JSON.stringify({ amount: 100 }),
+            headers: { 'Content-Type': 'application/json', ...config.headers }
+          });
+        }
+        setConcurrency(10);
+        setIterationsPerUser(1);
+        setAssertions([
+          { id: '1', type: 'STATUS_CODE', value: '200' }
+        ]);
+        setSelectedPresetId('PRESET_RACE_BROKEN');
+        setSelectedModule('race');
+      }
+    },
+    {
+      id: 'PRESET_RACE_FIXED',
+      name: 'Trade Collision (Mutex protected / Fixed)',
+      desc: 'Performs concurrent transactions with proper locking check. Ensures overdraft requests check balance atomically and exit with a clean 400 error.',
+      icon: <Target size={12} className="text-emerald-400" />,
+      setup: () => {
+        if (onChangeConfig) {
+          onChangeConfig({
+            method: 'POST',
+            url: `${origin}/api/orders/fixed/place`,
+            body: JSON.stringify({ amount: 100 }),
+            headers: { 'Content-Type': 'application/json', ...config.headers }
+          });
+        }
+        setConcurrency(10);
+        setIterationsPerUser(1);
+        setAssertions([
+          { id: '1', type: 'STATUS_CODE', value: '200' }
+        ]);
+        setSelectedPresetId('PRESET_RACE_FIXED');
+        setSelectedModule('race');
+      }
+    },
     {
       id: 'PRESET_DISTRIBUTED_RATE_LIMIT',
       name: 'Distributed Rate-Limit Sandbox',

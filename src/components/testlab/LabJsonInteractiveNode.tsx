@@ -4,7 +4,7 @@ interface LabJsonInteractiveNodeProps {
   label?: string;
   val: any;
   isLast?: boolean;
-  key?: any;
+  key?: React.Key;
 }
 
 export function LabJsonInteractiveNode({ label, val, isLast = true }: LabJsonInteractiveNodeProps): React.JSX.Element {
