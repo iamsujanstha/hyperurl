@@ -325,7 +325,7 @@ async function startServer() {
           
           RequestRunner.runBatch(config, (progress) => {
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: "progress", tabId, ...progress }));
+              ws.send(JSON.stringify({ tabId, ...progress, type: "progress" }));
             }
           }, controller.signal).then(async (results) => {
             activeBatches.delete(ws);
