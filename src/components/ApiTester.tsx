@@ -148,6 +148,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 addAssertion={addAssertion}
                 removeAssertion={removeAssertion}
                 updateAssertion={updateAssertion}
+                variables={variables}
+                setVariables={setVariables}
               />
             )}
 

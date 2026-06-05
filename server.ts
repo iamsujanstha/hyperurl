@@ -208,8 +208,11 @@ async function startServer() {
   let maxWorkersLimit = 64;
 
   const namesPool = [
-    "Thread_Delta", "Thread_Epsilon", "Thread_Zeta", "Thread_Eta", 
-    "Thread_Theta", "Thread_Iota", "Thread_Kappa", "Thread_Lambda", "Thread_Mu"
+    "Core_Worker_04 (Concurrency Agent)",
+    "Core_Worker_05 (Metrics Aggregator)",
+    "Core_Worker_06 (Encryption Handler)",
+    "Core_Worker_07 (Buffer Spawner)",
+    "Core_Worker_08 (CDN Router Prober)"
   ];
 
   function getSpawnedWorkersList() {
@@ -230,7 +233,7 @@ async function startServer() {
       const id = workerData.id;
       const name = workerData.name;
       let status = 'IDLE';
-      let task = 'WAITING_FOR_QUEUE';
+      let task = 'AWAITING_WORK_QUEUE';
       let activeTime = 0;
 
       // Thread event cycle
@@ -249,18 +252,18 @@ async function startServer() {
         if (Math.random() < 0.18) {
           if (status === 'IDLE') {
             const tasksMap = [
-              "COMPUTING_JITTER_SPREAD",
-              "PARSING_CURL_TEMPLATES",
-              "SYNCING_REDIS_SESSIONS",
-              "FILTERING_MALFORMED_JSON",
-              "CALCULATING_AVG_LATENCY",
-              "ENCRYPTING_METRICS_LOG"
+              "DISPATCHING_STRESS_WAVE",
+              "MINING_LATENCY_PERCENTILES",
+              "EVALUATING_RESPONSE_HYGIENE",
+              "FUZZING_OPERATION_PAYLOAD",
+              "INJECTING_CHAOS_ENTROPY",
+              "SPOOFING_DISTRIBUTED_IP"
             ];
             status = 'ACTIVE';
             task = tasksMap[Math.floor(Math.random() * tasksMap.length)];
           } else {
             status = 'IDLE';
-            task = 'WAITING_FOR_QUEUE';
+            task = 'AWAITING_WORK_QUEUE';
           }
         }
 
@@ -496,9 +499,9 @@ async function startServer() {
   }
 
   // Launch initial real Worker Threads immediately (replaces the static mock ones)
-  spawnRealWorkerThread("worker-1", "RealThread_Alpha_414");
-  spawnRealWorkerThread("worker-2", "RealThread_Beta_590");
-  spawnRealWorkerThread("worker-3", "RealThread_Gamma_821");
+  spawnRealWorkerThread("worker-1", "Core_Worker_01 (Network Stressor)");
+  spawnRealWorkerThread("worker-2", "Core_Worker_02 (Payload Broker)");
+  spawnRealWorkerThread("worker-3", "Core_Worker_03 (Jitter Monitor)");
 
   // Real-time server telemetry engine (broadcast every 1000ms)
   const broadcastTelemetry = () => {

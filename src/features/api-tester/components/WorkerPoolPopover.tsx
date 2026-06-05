@@ -40,6 +40,10 @@ export function WorkerPoolPopover({
             </button>
           </div>
 
+          <div className="px-3.5 py-2.5 bg-black/40 text-[9.5px] font-sans text-slate-400 border-b border-slate-800/40 leading-relaxed select-none">
+            Provides native multi-threaded concurrency. This distributes heavy API stress-testing workloads across isolated CPU cores to avoid blocking the server's primary event loop.
+          </div>
+
           <div className="p-4 space-y-4">
             {/* Control Actions */}
             <div className="flex gap-2">

@@ -21,6 +21,39 @@ export interface AssertionResult {
   error?: string;
 }
 
+export interface ResponseExtractorRule {
+  id: string;
+  jsonPath: string;
+  variableName: string;
+}
+
+export interface AuthConfig {
+  type: 'none' | 'oauth2_client' | 'oauth2_pkce' | 'mtls' | 'aws_v4';
+  oauth2Client?: {
+    clientId: string;
+    clientSecret: string;
+    tokenUrl: string;
+    scope?: string;
+  };
+  oauth2Pkce?: {
+    clientId: string;
+    authUrl: string;
+    codeVerifier: string;
+    codeChallenge: string;
+    challengeMethod: 'S256' | 'plain';
+  };
+  mtls?: {
+    clientCert: string;
+    privateKey: string;
+  };
+  awsV4?: {
+    accessKeyId: string;
+    secretAccessKey: string;
+    region: string;
+    service: string;
+  };
+}
+
 export interface SavedRequest extends RequestConfig {
   id: string;
   name: string;
@@ -28,6 +61,8 @@ export interface SavedRequest extends RequestConfig {
   graphqlVariables?: string;
   headersList: { id: string, key: string, value: string }[];
   assertions?: AssertionRule[];
+  extractors?: ResponseExtractorRule[];
+  authConfig?: AuthConfig;
 }
 
 export interface Collection {
@@ -53,6 +88,8 @@ export interface Tab {
   loading: boolean;
   progress: null | ProgressUpdate;
   assertions?: AssertionRule[];
+  extractors?: ResponseExtractorRule[];
+  authConfig?: AuthConfig;
 }
 
 export interface Telemetry {

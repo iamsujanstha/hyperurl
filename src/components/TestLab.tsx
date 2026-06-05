@@ -513,10 +513,21 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       {/* Main Multi-Pane Workspace Area */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* PANEL 2: Left Sidebar Config & Controls */}
-        <div className={cn(
-          "bg-[#0F1115]",
-          windowWidth >= 1024 ? "w-[300px] shrink-0 border-r border-[#1E293B] h-full" : (activeMobileTab === 'config' ? "w-full overflow-y-auto" : "hidden")
-        )}>
+        <motion.div 
+          initial={false}
+          animate={windowWidth >= 1024 ? { x: 0, opacity: 1, pointerEvents: "auto" as const } : { 
+            x: activeMobileTab === 'config' ? 0 : '-100%',
+            opacity: activeMobileTab === 'config' ? 1 : 0,
+            pointerEvents: activeMobileTab === 'config' ? "auto" as const : "none" as const
+          }}
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          className={cn(
+            "bg-[#0F1115] transition-shadow duration-200",
+            windowWidth >= 1024 
+              ? "w-[420px] shrink-0 border-r border-[#1E293B] h-full overflow-hidden" 
+              : "absolute inset-0 w-full h-full overflow-hidden z-20 shadow-2xl"
+          )}
+        >
           <TestLabSidebar 
             config={config}
             loading={loading}
@@ -545,13 +556,24 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
             onChangeConfig={onChangeConfig}
             telemetry={telemetry}
           />
-        </div>
+        </motion.div>
 
         {/* PANEL 3: Right Live Telemetry Screen */}
-        <div className={cn(
-          "bg-[#07080A] flex flex-col overflow-hidden",
-          windowWidth >= 1024 ? "flex-1 h-full" : (activeMobileTab === 'results' ? "w-full flex-1" : "hidden")
-        )}>
+        <motion.div 
+          initial={false}
+          animate={windowWidth >= 1024 ? { x: 0, opacity: 1, pointerEvents: "auto" as const } : { 
+            x: activeMobileTab === 'results' ? 0 : '100%',
+            opacity: activeMobileTab === 'results' ? 1 : 0,
+            pointerEvents: activeMobileTab === 'results' ? "auto" as const : "none" as const
+          }}
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          className={cn(
+            "bg-[#07080A] flex flex-col overflow-hidden",
+            windowWidth >= 1024 
+              ? "flex-1 h-full" 
+              : "absolute inset-0 w-full h-full z-10"
+          )}
+        >
           {/* Telemetry values with clean typography */}
           <div className="p-5 border-b border-slate-800 bg-black/60 grid grid-cols-2 md:grid-cols-4 gap-6 select-none shadow-[inset_0_-2px_10px_rgba(0,0,0,0.5)] shrink-0">
              <div className="space-y-1.5 border-r border-slate-900 pr-4">
@@ -734,7 +756,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                 )}
              </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

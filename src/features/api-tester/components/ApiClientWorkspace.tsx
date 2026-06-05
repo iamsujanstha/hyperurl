@@ -50,6 +50,8 @@ interface ApiClientWorkspaceProps {
   addAssertion: (rule: AssertionRule) => void;
   removeAssertion: (id: string) => void;
   updateAssertion: (id: string, updates: Partial<AssertionRule>) => void;
+  variables?: Record<string, string>;
+  setVariables?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 export function ApiClientWorkspace({
@@ -77,7 +79,9 @@ export function ApiClientWorkspace({
 
   addAssertion,
   removeAssertion,
-  updateAssertion
+  updateAssertion,
+  variables = {},
+  setVariables
 }: ApiClientWorkspaceProps) {
   const [windowWidth, setWindowWidth] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [activeMobilePanel, setActiveMobilePanel] = React.useState<'request' | 'response'>('request');
@@ -492,6 +496,406 @@ export function ApiClientWorkspace({
             </div>
           </section>
 
+          {/* Advanced Authorization Config */}
+          <section className="space-y-3.5 pt-1 border-t border-slate-900/40">
+            <div className="flex items-center justify-between select-none font-sans">
+              <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 font-bold select-none">
+                 <ShieldCheck size={12} className="text-emerald-500 animate-pulse" /> Advanced_Authorization
+              </label>
+            </div>
+            <div className="bg-[#0A0C11] p-4 rounded-lg border border-slate-900 font-mono text-xs space-y-3.5">
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Auth Mechanism Type</label>
+                <select
+                  value={activeTab.authConfig?.type || 'none'}
+                  onChange={(e) => {
+                    const type = e.target.value as any;
+                    updateActiveTab({
+                      authConfig: {
+                        type,
+                        oauth2Client: type === 'oauth2_client' ? { clientId: '', clientSecret: '', tokenUrl: '' } : undefined,
+                        oauth2Pkce: type === 'oauth2_pkce' ? { clientId: '', authUrl: '', codeVerifier: '', codeChallenge: '', challengeMethod: 'S256' } : undefined,
+                        mtls: type === 'mtls' ? { clientCert: '', privateKey: '' } : undefined,
+                        awsV4: type === 'aws_v4' ? { accessKeyId: '', secretAccessKey: '', region: 'us-east-1', service: 'execute-api' } : undefined,
+                      }
+                    });
+                  }}
+                  className="w-full bg-[#11141C] border border-slate-805 rounded px-2.5 py-1.5 text-slate-350 font-bold focus:border-emerald-500/40 text-[11px]"
+                >
+                  <option value="none">No Auth (Inherited / Public)</option>
+                  <option value="oauth2_client">OAuth 2.0 (Client Credentials Flow)</option>
+                  <option value="oauth2_pkce">OAuth 2.0 (PKCE Authorization)</option>
+                  <option value="mtls">Mutual TLS (mTLS Cert Binding)</option>
+                  <option value="aws_v4">AWS Signature version 4</option>
+                </select>
+              </div>
+
+              {/* OAuth 2.0 Client Credentials */}
+              {activeTab.authConfig?.type === 'oauth2_client' && (
+                <div className="space-y-3 pt-2 border-t border-slate-900/40 animate-fadeIn text-[11px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Client ID</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.oauth2Client?.clientId || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              oauth2Client: { ...activeTab.authConfig!.oauth2Client!, clientId: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="CLIENT_ID"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Client Secret</label>
+                      <input
+                        type="password"
+                        value={activeTab.authConfig.oauth2Client?.clientSecret || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              oauth2Client: { ...activeTab.authConfig!.oauth2Client!, clientSecret: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="••••••••••••"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Access Token URL</label>
+                    <input
+                      type="text"
+                      value={activeTab.authConfig.oauth2Client?.tokenUrl || ''}
+                      onChange={(e) => {
+                        updateActiveTab({
+                          authConfig: {
+                            ...activeTab.authConfig!,
+                            oauth2Client: { ...activeTab.authConfig!.oauth2Client!, tokenUrl: e.target.value }
+                          }
+                        });
+                      }}
+                      placeholder="https://oauth.identity.provider/token"
+                      className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const client = activeTab.authConfig?.oauth2Client;
+                      if (!client || !client.tokenUrl || !client.clientId) {
+                        showCustomAlert('MISSING CLIENT CONFIG', 'Provide Access Token URL and Client Credentials to request a token.');
+                        return;
+                      }
+                      showCustomAlert('GENERATING OAUTH ACCESS TOKEN', 'Submitting secure OAuth Client Credentials sequence...');
+                      try {
+                        const response = await fetch('/api/execute', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            method: 'POST',
+                            url: client.tokenUrl,
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `grant_type=client_credentials&client_id=${encodeURIComponent(client.clientId)}&client_secret=${encodeURIComponent(client.clientSecret || '')}`
+                          })
+                        });
+                        const textRes = await response.json();
+                        if (textRes && textRes.body) {
+                          const parsed = JSON.parse(textRes.body);
+                          if (parsed.access_token && setVariables) {
+                            setVariables(prev => ({ ...prev, 'ACCESS_TOKEN': parsed.access_token }));
+                            showCustomAlert('OAUTH AUTHORIZATION SUCCESS', `Access Token Retrieved Successfully!\n\nAdded {{ACCESS_TOKEN}} variable to project environment:\n• ${parsed.access_token.substring(0, 60)}...`);
+                          } else {
+                            showCustomAlert('OAUTH ISSUER ERROR', `Response did not contain an access_token. Raw payload:\n\n${textRes.body}`);
+                          }
+                        } else {
+                          throw new Error('Connection timed out or failed to parse.');
+                        }
+                      } catch(ex: any) {
+                        showCustomAlert('OAUTH WORKFLOW FAILURE', ex?.message || 'Server error or TLS issue. Verify credentials and endpoint.');
+                      }
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 py-1.5 rounded text-[10px] font-black text-white hover:shadow transition-colors cursor-pointer select-none"
+                  >
+                    RETRIEVE OAUTH TOKEN
+                  </button>
+                </div>
+              )}
+
+              {/* OAuth 2.0 PKCE */}
+              {activeTab.authConfig?.type === 'oauth2_pkce' && (
+                <div className="space-y-3 pt-2 border-t border-slate-900/40 animate-fadeIn text-[11px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Client ID</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.oauth2Pkce?.clientId || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              oauth2Pkce: { ...activeTab.authConfig!.oauth2Pkce!, clientId: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="CLIENT_ID"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Code Verifier</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.oauth2Pkce?.codeVerifier || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              oauth2Pkce: { ...activeTab.authConfig!.oauth2Pkce!, codeVerifier: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="PKCE_CODE_VERIFIER"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Code Challenge</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.oauth2Pkce?.codeChallenge || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              oauth2Pkce: { ...activeTab.authConfig!.oauth2Pkce!, codeChallenge: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="CHALLENGE_STRING"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Challenge Method</label>
+                      <select
+                        value={activeTab.authConfig.oauth2Pkce?.challengeMethod || 'S256'}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              oauth2Pkce: { ...activeTab.authConfig!.oauth2Pkce!, challengeMethod: e.target.value as any }
+                            }
+                          });
+                        }}
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 text-[10.5px]"
+                      >
+                        <option value="S256">SHA-256 (Secure)</option>
+                        <option value="plain">Plain</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Mutual TLS Cert Setup */}
+              {activeTab.authConfig?.type === 'mtls' && (
+                <div className="space-y-3 pt-2 border-t border-slate-900/40 animate-fadeIn text-[11px]">
+                  <div>
+                    <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Client Certificate (PEM format)</label>
+                    <textarea
+                      value={activeTab.authConfig.mtls?.clientCert || ''}
+                      onChange={(e) => {
+                        updateActiveTab({
+                          authConfig: {
+                            ...activeTab.authConfig!,
+                            mtls: { ...activeTab.authConfig!.mtls!, clientCert: e.target.value }
+                          }
+                        });
+                      }}
+                      placeholder="-----BEGIN CERTIFICATE-----\nMIIF..."
+                      className="w-full bg-[#11141C] border border-slate-800 rounded p-2 text-emerald-400 font-mono text-[9.5px] h-14 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Private Key (PKCS#1/PKCS#8)</label>
+                    <textarea
+                      value={activeTab.authConfig.mtls?.privateKey || ''}
+                      onChange={(e) => {
+                        updateActiveTab({
+                          authConfig: {
+                            ...activeTab.authConfig!,
+                            mtls: { ...activeTab.authConfig!.mtls!, privateKey: e.target.value }
+                          }
+                        });
+                      }}
+                      placeholder="-----BEGIN PRIVATE KEY-----\nMIIE..."
+                      className="w-full bg-[#11141C] border border-slate-800 rounded p-2 text-emerald-400 font-mono text-[9.5px] h-14 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* AWS Signature v4 */}
+              {activeTab.authConfig?.type === 'aws_v4' && (
+                <div className="space-y-3 pt-2 border-t border-slate-900/40 animate-fadeIn text-[11px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Access Key ID</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.awsV4?.accessKeyId || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              awsV4: { ...activeTab.authConfig!.awsV4!, accessKeyId: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="AKIAIOSFODNN7EXAMPLE"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Secret Access Key</label>
+                      <input
+                        type="password"
+                        value={activeTab.authConfig.awsV4?.secretAccessKey || ''}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              awsV4: { ...activeTab.authConfig!.awsV4!, secretAccessKey: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="••••••••••••••••••••"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">AWS Region</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.awsV4?.region || 'us-east-1'}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              awsV4: { ...activeTab.authConfig!.awsV4!, region: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="us-east-1"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Service Name</label>
+                      <input
+                        type="text"
+                        value={activeTab.authConfig.awsV4?.service || 'execute-api'}
+                        onChange={(e) => {
+                          updateActiveTab({
+                            authConfig: {
+                              ...activeTab.authConfig!,
+                              awsV4: { ...activeTab.authConfig!.awsV4!, service: e.target.value }
+                            }
+                          });
+                        }}
+                        placeholder="execute-api"
+                        className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 text-[10.5px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Programmatic Chained Value Extractors */}
+          <section className="space-y-3.5 pt-1 border-t border-slate-900/40">
+            <div className="flex items-center justify-between select-none font-sans">
+              <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 font-bold select-none">
+                 <Layers size={12} className="text-emerald-500 animate-pulse" /> Chained_Extractors ({activeTab.extractors?.length || 0})
+              </label>
+              <button 
+                type="button"
+                onClick={() => {
+                  const nextExtractors = activeTab.extractors ? [...activeTab.extractors] : [];
+                  updateActiveTab({ extractors: [...nextExtractors, { id: uuidv4(), jsonPath: '', variableName: '' }] });
+                }}
+                className="text-emerald-400 hover:text-white transition-colors p-1.5 bg-[#12161F] hover:bg-slate-900 rounded-lg shadow-sm active:scale-90 cursor-pointer"
+                title="Add response JSON Path extractor rule"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(!activeTab.extractors || activeTab.extractors.length === 0) ? (
+                <div className="text-center p-4 bg-slate-950/25 border border-slate-905 border-dashed rounded-lg text-slate-500 text-[10px] font-mono uppercase">
+                  No chained extractors configured. Map response elements to variables.
+                </div>
+              ) : (
+                activeTab.extractors.map((ext) => (
+                  <div key={ext.id} className="flex gap-2 bg-[#0A0C11] p-3 rounded-lg border border-slate-900 font-mono text-xs items-center">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black block mb-0.5">Response JSON Path</label>
+                        <input
+                          type="text"
+                          value={ext.jsonPath}
+                          onChange={(e) => {
+                            const updatedList = activeTab.extractors?.map(item => item.id === ext.id ? { ...item, jsonPath: e.target.value } : item) || [];
+                            updateActiveTab({ extractors: updatedList });
+                          }}
+                          placeholder="e.g. data.login.token"
+                          className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 outline-none text-[10.5px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black block mb-0.5">Target Variable Name</label>
+                        <input
+                          type="text"
+                          value={ext.variableName}
+                          onChange={(e) => {
+                            const updatedList = activeTab.extractors?.map(item => item.id === ext.id ? { ...item, variableName: e.target.value.toUpperCase() } : item) || [];
+                            updateActiveTab({ extractors: updatedList });
+                          }}
+                          placeholder="e.g. JWT_TOKEN"
+                          className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 outline-none text-[10.5px]"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updatedList = activeTab.extractors?.filter(item => item.id !== ext.id) || [];
+                        updateActiveTab({ extractors: updatedList });
+                      }}
+                      className="text-slate-500 hover:text-rose-400 transition-colors p-1.5 self-end cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
           {/* Method Bodys / JSON payloads section */}
           {['POST', 'PUT', 'PATCH'].includes(activeTab.config.method) && (
             <section className="space-y-3 pt-1">
@@ -542,6 +946,53 @@ export function ApiClientWorkspace({
                     <span className="text-[10px] uppercase font-black text-violet-400 tracking-widest flex items-center gap-2 font-mono">
                       <Layers size={12} className="text-violet-500 animate-pulse" /> GraphQL_Query
                     </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!activeTab.config.url) {
+                          showCustomAlert('INTROSPECTION FAILED', 'Provide a GQL endpoint URL first.');
+                          return;
+                        }
+                        showCustomAlert('INTROSPECTING SCHEMA', `Querying Schema Introspection standard frames from:\n${activeTab.config.url}`);
+                        try {
+                          const queryIntro = `query IntrospectionQuery { __schema { types { name kind fields { name type { name kind } } } } }`;
+                          const response = await fetch('/api/execute', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              method: 'POST',
+                              url: activeTab.config.url,
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ query: queryIntro })
+                            })
+                          });
+                          const res = await response.json();
+                          if (res && res.body) {
+                            const parsed = JSON.parse(res.body);
+                            if (parsed?.data?.__schema) {
+                              const typesCount = parsed.data.__schema.types.length;
+                              const mutations = parsed.data.__schema.types.find((t: any) => t.name === 'Mutation')?.fields?.map((f: any) => f.name) || [];
+                              const queries = parsed.data.__schema.types.find((t: any) => t.name === 'Query')?.fields?.map((f: any) => f.name) || [];
+                              showCustomAlert(
+                                '⚡ SCHEMA INTROSPECTED', 
+                                `Successfully extracted schema with ${typesCount} types!\n\n` +
+                                `• Queries found: ${queries.slice(0, 5).join(', ')}${queries.length > 5 ? '... and ' + (queries.length - 5) + ' more' : ''}\n` +
+                                `• Mutations found: ${mutations.slice(0, 5).join(', ')}${mutations.length > 5 ? '... and ' + (mutations.length - 5) + ' more' : ''}`
+                              );
+                            } else {
+                              showCustomAlert('INTROSPECTION SCHEMA ERROR', `Received invalid GQL response schema. It might be disabled or incorrect. Response:\n\n${res.body}`);
+                            }
+                          } else {
+                            throw new Error('Endpoint returned empty response body.');
+                          }
+                        } catch(ex: any) {
+                          showCustomAlert('INTROSPECTION FAILED', ex.message || 'Error occurred while querying introspection standard frames, verify endpoint CORS compliance.');
+                        }
+                      }}
+                      className="text-[9px] font-black font-mono text-violet-400 hover:text-white uppercase transition-colors flex items-center gap-1 cursor-pointer bg-violet-950/20 border border-violet-900/30 px-2.5 py-1 rounded select-none"
+                    >
+                      INTROSPECT SCHEMA
+                    </button>
                   </div>
                   <textarea
                     value={activeTab.graphqlQuery || ''}

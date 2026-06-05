@@ -97,7 +97,7 @@ export function TestLabSidebar({
   const totalIterations = concurrency * iterationsPerUser;
 
   return (
-    <div className="w-[420px] bg-[#0F1115] border-r border-[#1E293B] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
+    <div className="w-full h-full bg-[#0F1115] flex flex-col overflow-y-auto custom-scrollbar">
       <div className="p-5 space-y-6 flex-grow">
         
         {/* Sleek Test Strategy Selector */}
@@ -105,7 +105,7 @@ export function TestLabSidebar({
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">TEST STRATEGY</span>
           
           {/* Category Filter Tabs */}
-          <div className="flex bg-black/60 p-1 border border-slate-800/50 rounded-lg gap-1">
+          <div className="flex bg-black/60 p-1 border border-slate-800/50 rounded-lg gap-1 relative overflow-hidden">
             {[
               { id: 'all', label: 'All' },
               { id: 'perf', label: 'Perf' },
@@ -117,47 +117,61 @@ export function TestLabSidebar({
                 type="button"
                 onClick={() => setSelectedCategory(tab.id as any)}
                 className={cn(
-                  "flex-1 py-1 text-[8px] font-extrabold tracking-wider uppercase rounded transition-all cursor-pointer select-none outline-none border",
+                  "flex-1 py-1 text-[8px] font-extrabold tracking-wider uppercase rounded transition-all cursor-pointer select-none outline-none border relative z-10",
                   selectedCategory === tab.id
-                    ? "bg-slate-800 border-slate-705 text-emerald-400 font-black"
+                    ? "text-emerald-400 font-black border-slate-700/30"
                     : "bg-transparent border-transparent text-slate-400 hover:text-slate-200"
                 )}
               >
                 {tab.label}
+                {selectedCategory === tab.id && (
+                  <motion.div
+                    layoutId="activeCategoryTab"
+                    className="absolute inset-0 bg-slate-800 border border-slate-700/60 rounded z-[-1]"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
               </button>
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {filteredModules.map((module) => {
-              const isActive = selectedModule === module.id;
-              return (
-                <button
-                  key={module.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedModule(module.id);
-                    setSelectedResult(null); 
-                  }}
-                  className={cn(
-                    "p-3 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer relative overflow-hidden select-none outline-none",
-                    isActive 
-                      ? "bg-emerald-500/15 border-emerald-500/40 text-white" 
-                      : "bg-black/40 border-slate-850 text-slate-400 hover:bg-slate-900/35 hover:border-slate-800 hover:text-slate-200"
-                  )}
-                >
-                  <div className={cn(
-                    "p-1.5 rounded-md border",
-                    isActive ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-[#090D14]/50 border-slate-850/80 text-slate-400"
-                  )}>
-                    {module.icon}
-                  </div>
-                  <div className="text-center">
-                    <span className="text-[9px] font-black font-mono tracking-wider block uppercase">{module.name.replace('_', ' ')}</span>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-3 gap-2 overflow-hidden">
+            <AnimatePresence mode="popLayout">
+              {filteredModules.map((module) => {
+                const isActive = selectedModule === module.id;
+                return (
+                  <motion.button
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    key={module.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedModule(module.id);
+                      setSelectedResult(null); 
+                    }}
+                    className={cn(
+                      "p-3 rounded-lg border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer relative overflow-hidden select-none outline-none min-h-[76px]",
+                      isActive 
+                        ? "bg-emerald-500/15 border-emerald-500/40 text-white" 
+                        : "bg-black/40 border-slate-850 text-slate-400 hover:bg-slate-900/35 hover:border-slate-800 hover:text-slate-200"
+                    )}
+                  >
+                    <div className={cn(
+                      "p-1.5 rounded-md border",
+                      isActive ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-[#090D14]/50 border-slate-850/80 text-slate-400"
+                    )}>
+                      {module.icon}
+                    </div>
+                    <div className="text-center">
+                      <span className="text-[9px] font-black font-mono tracking-wider block uppercase">{module.name.replace('_', ' ')}</span>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </div>
 
