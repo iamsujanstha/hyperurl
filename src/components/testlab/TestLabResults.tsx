@@ -18,7 +18,6 @@ interface TestLabResultsProps {
   loading: boolean;
   progress: ProgressUpdate | null;
   selectedModule: TestModuleId;
-  assertions: { id: string; type: string; value: string }[];
   percentiles: { p50: number; p90: number; p95: number; p99: number };
   latencyCategories: {
     fast: { count: number; pct: number };
@@ -38,7 +37,6 @@ interface TestLabResultsProps {
   setPayloadTab: (tab: 'pretty' | 'raw') => void;
   logDetailWidth: number;
   setIsDraggingLogDetail: (val: boolean) => void;
-  getFailedAssertionsCount: (res: ExtendedCurlResult) => number;
   handleClearLogs: () => void;
   config: RequestConfig;
 }
@@ -48,7 +46,6 @@ export function TestLabResults({
   loading,
   progress,
   selectedModule,
-  assertions,
   percentiles,
   latencyCategories,
   regionalBreakdown,
@@ -60,10 +57,12 @@ export function TestLabResults({
   setPayloadTab,
   logDetailWidth,
   setIsDraggingLogDetail,
-  getFailedAssertionsCount,
   handleClearLogs,
   config
 }: TestLabResultsProps): React.JSX.Element {
+  const successPct = results.length > 0
+    ? Math.round((results.filter(r => r.status < 400).length / results.length) * 100)
+    : 0;
 
   return (
     <div className="flex-grow overflow-y-auto p-5 custom-scrollbar space-y-2 bg-[#050608]/50">
@@ -73,27 +72,25 @@ export function TestLabResults({
          <div className="bg-gradient-to-r from-emerald-950/20 via-slate-900/40 to-slate-950/60 border border-emerald-500/30 p-5 rounded-xl mb-4 space-y-4 shadow-xl select-text">
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
              <div className="flex items-center gap-3">
-               <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-455 rounded-lg flex items-center justify-center">
+               <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg flex items-center justify-center">
                  <ShieldAlert size={18} />
                </div>
                <div>
                  <h3 className="text-xs font-black text-white font-mono tracking-wider uppercase leading-none">Diagnostic Completed</h3>
-                 <p className="text-[10px] text-slate-455 mt-1 uppercase font-mono font-bold">Analysis Profile for real life verification</p>
+                 <p className="text-[10px] text-slate-300 mt-1 uppercase font-mono font-bold">Analysis Profile for real life verification</p>
                </div>
              </div>
              
              {/* Grade rating calculation */}
              {(() => {
-               const successPct = Math.round((results.filter(r => r.status < 400).length / results.length) * 100);
                const avgLat = results.reduce((acc, r) => acc + r.responseTime, 0) / results.length;
-               const failedAss = results.filter(r => getFailedAssertionsCount(r) > 0).length;
                
                let grade = "A+";
                let gradeColor = "text-emerald-400 border-emerald-500/30 bg-emerald-500/10 shadow-emerald-500/5";
 
-               if (successPct < 80 || failedAss > results.length * 0.4) {
+               if (successPct < 85) {
                  grade = "F";
-                 gradeColor = "text-rose-450 border-rose-500/30 bg-rose-500/10 shadow-rose-500/5";
+                 gradeColor = "text-rose-455 border-rose-500/30 bg-rose-500/10 shadow-rose-500/5";
                } else if (avgLat > 600) {
                  grade = "D";
                  gradeColor = "text-amber-400 border-amber-500/30 bg-amber-500/10 shadow-amber-500/5";
@@ -125,9 +122,9 @@ export function TestLabResults({
                </span>
              </div>
              <div className="bg-black/40 p-2.5 border border-slate-850 rounded-lg">
-               <span className="text-[10px] font-mono text-slate-400 font-bold block mb-0.5 uppercase">VERIFICATION PASSED</span>
-               <span className={cn("text-xs font-black font-mono", results.every(r => getFailedAssertionsCount(r) === 0) ? "text-emerald-400" : "text-amber-400")}>
-                 {results.filter(r => getFailedAssertionsCount(r) === 0).length} / {results.length} PASSED
+               <span className="text-[10px] font-mono text-slate-400 font-bold block mb-0.5 uppercase">SUCCESS RATE</span>
+               <span className={cn("text-xs font-black font-mono", successPct >= 95 ? "text-emerald-400" : "text-amber-400")}>
+                 {successPct}% OK Responses
                </span>
              </div>
              <div className="bg-black/40 p-2.5 border border-slate-850 rounded-lg">
@@ -150,7 +147,7 @@ export function TestLabResults({
                <div className={cn(
                  "p-2 rounded-lg flex items-center justify-center font-black text-[10px] border font-mono select-none leading-none",
                  securityAudit.totalAlerts > 0 
-                   ? "bg-rose-500/10 border-rose-500/30 text-rose-455" 
+                   ? "bg-rose-500/10 border-rose-500/30 text-rose-400" 
                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                )}>
                  {securityAudit.totalAlerts > 0 ? "VULNERABLE" : "SECURE PASS"}
@@ -164,7 +161,7 @@ export function TestLabResults({
                <span className="text-[10px] font-mono text-slate-500 font-bold uppercase leading-none">ALERTS FOUND:</span>
                <span className={cn(
                  "px-2 py-0.5 rounded font-mono font-black border text-xs leading-none",
-                 securityAudit.totalAlerts > 0 ? "bg-rose-500/10 border-rose-500/30 text-rose-455" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                 securityAudit.totalAlerts > 0 ? "bg-rose-500/10 border-rose-500/30 text-rose-400" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                )}>
                  {securityAudit.totalAlerts}
                </span>
@@ -204,7 +201,7 @@ export function TestLabResults({
                      <p className="text-xs text-slate-350 leading-relaxed font-sans mt-1">{item.detail}</p>
                      {!isPass && (
                        <div className="text-[11px] text-slate-400 font-sans border-t border-slate-800/80 pt-1.5 mt-1.5 flex items-start gap-1 font-bold">
-                         <span className="font-mono font-black text-rose-455 uppercase tracking-tighter shrink-0 text-[10px] [word-spacing:-3px] leading-none">REMEDIATION :</span>
+                         <span className="font-mono font-black text-rose-400 uppercase tracking-tighter shrink-0 text-[10px] [word-spacing:-3px] leading-none">REMEDIATION :</span>
                          <span className="leading-relaxed -mt-0.5">{item.recommendation}</span>
                        </div>
                      )}
@@ -292,7 +289,7 @@ export function TestLabResults({
                        <span>{region.flag}</span>
                        <span className="truncate max-w-[150px]">{region.label}</span>
                      </div>
-                     <div className="text-[10px] text-slate-505 font-bold">
+                     <div className="text-[10px] text-slate-400 font-bold">
                        LOAD: <span className="text-violet-400 font-black">{region.count} REQS</span>
                      </div>
                    </div>
@@ -332,11 +329,10 @@ export function TestLabResults({
          </div>
        )}
 
-       {[...results].reverse().map((res, i) => {
-         const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : (progress?.completed ?? results.length) - i;
+       {results.map((res, i) => {
+         const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : i + 1;
          const isSelected = selectedResult?.id === res.id;
-         const fails = getFailedAssertionsCount(res);
-         const passedAll = fails === 0;
+         const passed = res.status < 400;
          const rt = res.responseTime;
          const tag = rt < 150 
            ? { label: 'FAST', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' }
@@ -344,7 +340,7 @@ export function TestLabResults({
              ? { label: 'NOMINAL', color: 'bg-blue-500/10 text-blue-450 border border-blue-500/20' }
              : rt < 1000 
                ? { label: 'SLOW', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' }
-               : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-455 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
+               : { label: 'LAGGING', color: 'bg-rose-500/15 text-rose-400 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' };
          return (
            <div 
              key={res.id} 
@@ -353,9 +349,9 @@ export function TestLabResults({
                "group flex border-l-4 py-3 pl-4 pr-3.5 rounded-lg transition-all cursor-pointer items-center min-h-[44px] select-none text-xs font-mono mb-1.5",
                isSelected 
                  ? "bg-slate-800 text-white border-emerald-500 shadow-md" 
-                 : passedAll 
+                 : passed 
                    ? "border-slate-850 hover:border-emerald-505/70 hover:bg-[#10b981]/10 bg-black/20"
-                   : "border-rose-950 hover:border-rose-500/70 hover:bg-rose-505/5 bg-rose-950/10"
+                   : "border-rose-950 hover:border-rose-500/70 hover:bg-rose-505/5 bg-rose-955/10"
              )}
            >
              <span className="text-slate-400 w-20 shrink-0 font-bold group-hover:text-amber-400 transition-colors">➔ {rt}ms</span>
@@ -366,7 +362,7 @@ export function TestLabResults({
                <span className="text-slate-500 opacity-90 mr-2 font-bold">#{currentIdx}</span>
                {selectedModule === 'fuzzer' && <span className="text-cyan-400 font-extrabold mr-1.5">[MUTATED]</span>}
                {selectedModule === 'replay' && <span className="text-blue-400 font-extrabold mr-1.5">[CLONED]</span>}
-               {selectedModule === 'chaos' && <span className="text-rose-455 font-extrabold mr-1.5">[CORRUPTED]</span>}
+               {selectedModule === 'chaos' && <span className="text-rose-444 font-extrabold mr-1.5">[CORRUPTED]</span>}
                {res.simulatedIp ? (
                   <span className="text-violet-400 font-extrabold mr-1.5 inline-flex items-center gap-1.5">
                     <Globe size={11} className="text-violet-400 animate-pulse" />
@@ -385,13 +381,29 @@ export function TestLabResults({
                     <Repeat size={10} className="animate-spin" /> {res.retriesApplied}R
                   </span>
                 )}
-               {passedAll ? (
+               {(() => {
+                  const assertionResults = (res as any).assertions || [];
+                  if (assertionResults.length === 0) return null;
+                  const passedAssertions = assertionResults.filter((a: any) => a.passed).length;
+                  const allPassed = passedAssertions === assertionResults.length;
+                  return (
+                    <span className={cn(
+                      "text-[8px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase font-mono border leading-none h-5 flex items-center justify-center shrink-0",
+                      allPassed 
+                        ? "bg-emerald-500/10 text-emerald-305 border-emerald-500/20 font-bold" 
+                        : "bg-rose-500/10 text-rose-300 border-rose-500/20 font-bold animate-pulse"
+                    )}>
+                      ASSERT: {passedAssertions}/{assertionResults.length}
+                    </span>
+                  );
+                })()}
+               {passed ? (
                  <span className="text-[10px] font-black text-emerald-400 uppercase font-mono bg-emerald-500/15 px-2.5 py-0.5 rounded border border-emerald-500/30">
-                   ✓ PASS
+                   ✓ {res.status} OK
                  </span>
                ) : (
                  <span className="text-[10px] font-black text-rose-400 uppercase font-mono bg-rose-500/15 px-2.5 py-0.5 rounded border border-rose-500/30 flex items-center gap-1">
-                   ✗ FAIL ({fails})
+                   ✗ {res.status || 'ERR'}
                  </span>
                )}
              </div>

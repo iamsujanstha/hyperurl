@@ -20,11 +20,18 @@ export function ResponseViewer({
   theme = 'dark',
   defaultTab = 'response'
 }: ResponseViewerProps) {
-  const [activeResTab, setActiveResTab] = useState<'response' | 'preview' | 'headers'>(
+  const [activeResTab, setActiveResTab] = useState<'response' | 'preview' | 'headers' | 'assertions'>(
     defaultTab === 'log' ? 'response' : (defaultTab as any || 'response')
   );
 
   const [responseBoxHeight, setResponseBoxHeight] = useState<number>(450);
+  const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const startResizeResponse = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -108,7 +115,7 @@ export function ResponseViewer({
         {/* Bottom Section: Tabs bar and actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-2 px-4 bg-black/40">
           <div className="flex flex-wrap gap-1 bg-black/60 p-1 rounded border border-slate-900/60 overflow-x-auto">
-            {(['response', 'preview', 'headers'] as const).map(tab => (
+            {(['response', 'preview', 'headers', 'assertions'] as const).map(tab => (
               <button 
                 key={tab}
                 onClick={() => setActiveResTab(tab)}
@@ -117,7 +124,7 @@ export function ResponseViewer({
                   activeResTab === tab ? "bg-slate-800 text-white" : "text-slate-600 hover:text-slate-400"
                 )}
               >
-                {tab === 'response' ? 'RESPONSE' : tab === 'preview' ? 'PREVIEW' : 'HEADERS'}
+                {tab === 'response' ? 'RESPONSE' : tab === 'preview' ? 'PREVIEW' : tab === 'headers' ? 'HEADERS' : 'ASSERTIONS'}
               </button>
             ))}
           </div>
@@ -165,8 +172,11 @@ export function ResponseViewer({
       </div>
 
       <div 
-        style={{ height: `${responseBoxHeight}px` }}
-        className="overflow-auto p-6 font-mono text-xs leading-relaxed custom-scrollbar selection:bg-emerald-500/20 text-emerald-500/90"
+        style={windowWidth >= 1024 ? { height: `${responseBoxHeight}px` } : undefined}
+        className={cn(
+          "overflow-auto p-4 sm:p-6 font-mono text-xs leading-relaxed custom-scrollbar selection:bg-emerald-500/20 text-emerald-500/90",
+          windowWidth >= 1024 ? "" : "flex-1 px-4 py-4"
+        )}
       >
         {result.error && activeResTab !== 'headers' ? (
            <div className="text-rose-400 bg-rose-500/5 p-6 rounded border border-rose-500/10 backdrop-blur-sm">
@@ -262,6 +272,13 @@ export function ResponseViewer({
 
              {activeResTab === 'response' && (() => {
                 const bodyStr = (result.body || '').trim();
+                if (!bodyStr) {
+                  return (
+                    <div className="p-4 bg-slate-950/20 border border-slate-900 rounded-lg text-slate-400 italic text-[11px] font-mono uppercase font-black tracking-wider">
+                      Empty Response Body (Status {result.status})
+                    </div>
+                  );
+                }
                 try {
                   const json = JSON.parse(bodyStr);
                   return (
@@ -309,12 +326,92 @@ export function ResponseViewer({
                   ))}
                 </div>
              )}
+
+             {activeResTab === 'assertions' && (() => {
+                const assertionResults = (result as any).assertions || [];
+                if (assertionResults.length === 0) {
+                  return (
+                    <div className="p-4 bg-[#0A0D11] border border-slate-900 rounded-lg text-slate-500 italic text-[11px] font-mono text-center uppercase">
+                      No assertions evaluated for this transaction. Configure validation rules in the left-hand panel.
+                    </div>
+                  );
+                }
+
+                const total = assertionResults.length;
+                const passedCount = assertionResults.filter((r: any) => r.passed).length;
+                const failedCount = total - passedCount;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3 bg-[#0A1215] border border-slate-900 p-4 rounded-xl font-mono select-none">
+                      <div>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold block mb-1">TOTAL CHECKS</span>
+                        <span className="text-sm sm:text-base font-black text-white">{total}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-505 font-bold block mb-1">PASSED</span>
+                        <span className="text-sm sm:text-base font-black text-emerald-400">{passedCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-500 block mb-1 font-black">FAILED</span>
+                        <span className={cn("text-xs sm:text-sm font-black", failedCount > 0 ? "text-rose-400 animate-pulse font-extrabold" : "text-slate-500")}>{failedCount}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {assertionResults.map((assert: any, ind: number) => {
+                        return (
+                          <div
+                            key={assert.ruleId || ind}
+                            className={cn(
+                              "border p-3 rounded-lg flex flex-col justify-between gap-2.5 font-mono text-[11px] transition-colors",
+                              assert.passed
+                                ? "bg-emerald-950/10 border-emerald-950/40 text-emerald-300"
+                                : "bg-rose-950/15 border-rose-950/40 text-rose-350"
+                            )}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "text-[8px] font-black uppercase px-1.5 py-0.5 rounded",
+                                  assert.passed ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-455"
+                                )}>
+                                  {assert.passed ? 'PASSED' : 'FAILED'}
+                                </span>
+                                <span className="font-extrabold text-white text-xs">
+                                  {assert.type === 'status' ? 'Status Code Validation' :
+                                   assert.type === 'latency' ? 'Max Response Time SLA' :
+                                   assert.type === 'body_contains' ? 'Response Body Text Match' :
+                                   assert.type === 'json_path' ? 'JSON Path Validator' :
+                                   assert.type === 'header_matches' ? 'Header Key/Value Match' :
+                                   'GraphQL No Errors Audit'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-normal font-semibold">
+                                Expected: <span className="text-blue-400 font-bold">{assert.expected}</span>
+                                {assert.type === 'json_path' && ` (at JSON Path)`}
+                                <span className="mx-2">•</span>
+                                Actual: <span className={assert.passed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{assert.actual === '' ? 'empty response' : assert.actual}</span>
+                              </div>
+                              {assert.error && (
+                                <div className="text-[10px] text-rose-400/85 font-mono italic mt-1 bg-black/40 py-1 px-2 rounded border border-rose-950/30">
+                                  Fail Reason: {assert.error}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+             })()}
            </div>
         )}
       </div>
       <div 
         onMouseDown={startResizeResponse}
-        className="h-2 hover:h-2 bg-[#11141A] border-t border-slate-900 hover:bg-emerald-500 cursor-row-resize flex items-center justify-center transition-all group z-10 shrink-0"
+        className="hidden lg:flex h-2 hover:h-2 bg-[#11141A] border-t border-slate-900 hover:bg-emerald-500 cursor-row-resize items-center justify-center transition-all group z-10 shrink-0"
         title="Drag down to resize Response box"
       >
         <div className="h-[2px] w-12 bg-slate-700 group-hover:bg-emerald-350 rounded" />

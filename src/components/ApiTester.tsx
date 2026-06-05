@@ -55,7 +55,10 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
       createTab,
       closeTab,
       saveToCollection,
-      handleStartLabTest
+      handleStartLabTest,
+      addAssertion,
+      removeAssertion,
+      updateAssertion
     },
     telemetry,
     ws
@@ -64,7 +67,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
   if (!activeTab) return null;
 
   return (
-    <div className={cn("flex bg-[#0B0D11] h-screen text-slate-300 overflow-hidden font-sans select-none", theme === 'light' && "theme-light")}>
+    <div className={cn("flex bg-[#0B0D11] h-screen text-slate-300 overflow-hidden font-sans select-none relative", theme === 'light' && "theme-light")}>
       {/* 1. Collapsible Sidebar */}
       <WorkspaceSidebar 
         isSidebarCollapsed={isSidebarCollapsed}
@@ -73,6 +76,14 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
         setView={setView}
         createTab={createTab}
       />
+
+      {/* Backdrop overlay for mobile drawer dismiss clicks */}
+      {!isSidebarCollapsed && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/60 z-30 transition-opacity" 
+          onClick={() => setIsSidebarCollapsed(true)}
+        />
+      )}
 
       {/* 2. Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-[#0B0D11] relative">
@@ -84,6 +95,8 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
           telemetry={telemetry}
           isWorkerPoolOpen={isWorkerPoolOpen}
           setIsWorkerPoolOpen={setIsWorkerPoolOpen}
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
 
         {/* Worker Pool Floating Popover Dashboard */}
@@ -131,6 +144,10 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                 startResizeQuery={startResizeQuery}
                 startResizeVariables={startResizeVariables}
                 startResizePayloadJson={startResizePayloadJson}
+
+                addAssertion={addAssertion}
+                removeAssertion={removeAssertion}
+                updateAssertion={updateAssertion}
               />
             )}
 
@@ -155,6 +172,7 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   onAbort={handleAbort}
                   onChangeConfig={updateActiveConfig}
                   onClearLogs={() => updateActiveTab({ batchResults: [], progress: null })}
+                  telemetry={telemetry}
                 />
               </motion.div>
             )}

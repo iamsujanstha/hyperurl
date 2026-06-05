@@ -15,7 +15,7 @@ export interface BatchConfig {
   rotateIps?: boolean;
 }
 
-function getRandomRegionIp(region: string) {
+export function getRandomRegionIp(region: string) {
   const data: Record<string, { ip: string; country: string; flag: string; regionName: string }[]> = {
     us: [
       { ip: "54.210.23.111", country: "United States", flag: "🇺🇸", regionName: "us-east-1 (N. Virginia)" },

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid';
 import { RequestConfig, CurlResult } from '@/server/modules/curl-engine';
 import { ProgressUpdate } from '@/server/modules/runner';
-import { Tab, Collection, SavedRequest, Telemetry, DialogState } from '@/features/api-tester/types';
+import { Tab, Collection, SavedRequest, Telemetry, DialogState, AssertionRule } from '@/features/api-tester/types';
+import { evaluateAssertions } from '@/features/api-tester/assertionEvaluator';
 
 export function useApiTesterState(initialVariables: Record<string, string> = {}) {
   // Persistence Keys
@@ -26,7 +27,8 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
             showCurl: !!t.showCurl,
             loading: false,
             progress: null,
-            headersList: Array.isArray(t.headersList) ? t.headersList : [{ id: '1', key: 'Content-Type', value: 'application/json' }]
+            headersList: Array.isArray(t.headersList) ? t.headersList : [{ id: '1', key: 'Content-Type', value: 'application/json' }],
+            assertions: t.assertions || [{ id: 'def-status', type: 'status', value: '200' }]
           }));
         }
       }
@@ -48,7 +50,8 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
       batchConcurrency: 5,
       showCurl: false,
       loading: false,
-      progress: null
+      progress: null,
+      assertions: [{ id: 'def-status', type: 'status', value: '200' }]
     }];
   });
 
@@ -304,19 +307,52 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
           const tabId = data.tabId || activeTabIdRef.current;
           setTabs(prev => prev.map(t => {
             if (t.id === tabId) {
+              const lastResult = data.lastResult;
+              if (lastResult) {
+                lastResult.assertions = evaluateAssertions(lastResult, t.assertions || []);
+              }
               return {
                 ...t,
                 progress: { ...data, startTime: data.startTime || Date.now() },
-                batchResults: data.lastResult ? [...(Array.isArray(t.batchResults) ? t.batchResults : []), data.lastResult] : t.batchResults
+                batchResults: lastResult ? [...(Array.isArray(t.batchResults) ? t.batchResults : []), lastResult] : t.batchResults
               };
             }
             return t;
           }));
         } else if (data.type === 'complete') {
           const tabId = data.tabId || activeTabIdRef.current;
-          setTabs(prev => prev.map(t => t.id === tabId ? { ...t, progress: null, loading: false } : t));
+          setTabs(prev => prev.map(t => {
+            if (t.id === tabId) {
+              const evaluated = (data.results || t.batchResults || []).map((r: any) => ({
+                ...r,
+                assertions: evaluateAssertions(r, t.assertions || [])
+              }));
+              return { 
+                ...t, 
+                batchResults: evaluated, 
+                progress: null, 
+                loading: false 
+              };
+            }
+            return t;
+          }));
         } else if (data.type === 'telemetry') {
           setTelemetry(data.payload);
+        } else if (data.type === 'telemetry_real_math_done') {
+          setDialog({
+            isOpen: true,
+            type: 'ALERT',
+            title: "⚡ REAL CPU THREAD SUCCESS",
+            message: `Node.js background OS thread [${data.payload.workerName}] completed a real CPU-bound stress-test (15,000,000 Leibniz iterations) in the background!\n\n` +
+                     `• Computed Pi: ${data.payload.result}\n` +
+                     `• Thread active CPU duration: ${data.payload.elapsed} ms\n\n` +
+                     `Because this ran on a native node:worker_threads Worker, the main Express event loop remained completely idle and responsive!`,
+            defaultValue: '',
+            inputVal: '',
+            onConfirm: () => {
+              setDialog(prev => ({ ...prev, isOpen: false }));
+            }
+          });
         }
       } catch (e) {
         console.error('WS Message parsing error:', e);
@@ -352,24 +388,50 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
     let body = resolveVars(tab.config.body || '');
     
     if (tab.config.method === 'GRAPHQL') {
+      let queryStr = (tab.graphqlQuery || '').trim();
       let vars = {};
       let rawVars = resolveVars(tab.graphqlVariables || '').trim();
-      
-      if (rawVars && /^\s*(query|mutation|subscription|fragment)\b/i.test(rawVars)) {
-        console.warn('Detected GraphQL query/syntax in variables field. Ignoring invalid variables JSON.');
-        rawVars = '';
+
+      // Smart rescue fallback for GraphQL requests that have empty query fields:
+      // If query is blank here, check if the standard body field contains either raw query text 
+      // or a JSON payload containing the query and variables keys (commonly happens on imports/preset loads).
+      if (!queryStr || !rawVars) {
+        const bodyStr = (tab.config.body || '').trim();
+        if (bodyStr) {
+          try {
+            const parsed = JSON.parse(bodyStr);
+            if (parsed && typeof parsed === 'object') {
+              if (!queryStr && parsed.query) {
+                queryStr = parsed.query;
+              }
+              if (!rawVars && parsed.variables && typeof parsed.variables === 'object') {
+                vars = parsed.variables;
+              }
+            } else if (!queryStr) {
+              queryStr = bodyStr;
+            }
+          } catch {
+            if (!queryStr) {
+              queryStr = bodyStr;
+            }
+          }
+        }
       }
 
-      try {
-        if (rawVars) {
-          vars = JSON.parse(rawVars);
+      if (rawVars) {
+        if (/^\s*(query|mutation|subscription|fragment)\b/i.test(rawVars)) {
+          console.warn('Detected GraphQL query/syntax in variables field. Ignoring invalid variables JSON.');
+        } else {
+          try {
+            vars = { ...vars, ...JSON.parse(rawVars) };
+          } catch (e: any) {
+            console.warn('Invalid GraphQL variables JSON:', e?.message || e);
+          }
         }
-      } catch (e: any) {
-        console.warn('Invalid GraphQL variables JSON:', e?.message || e);
       }
       
       body = JSON.stringify({
-        query: resolveVars(tab.graphqlQuery || ''),
+        query: resolveVars(queryStr),
         variables: vars
       });
     }
@@ -483,13 +545,19 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
             const errJson = JSON.parse(text);
             errorMsg = errJson.error || errorMsg;
           } catch {
-            if (text.length < 100) errorMsg = text;
+            if (text.trim().length > 0) {
+              if (text.length < 100) errorMsg = text;
+            } else {
+              errorMsg = `Server returned status code ${response.status} (${response.statusText || 'Bad Request'}) with an empty response body.`;
+            }
           }
           throw new Error(errorMsg);
         }
 
         const data = await response.json();
         const dataWithConfig = { ...data, config: resolvedConfig };
+        const evaluated = evaluateAssertions(dataWithConfig, activeTab.assertions || []);
+        dataWithConfig.assertions = evaluated;
         const currentResults = Array.isArray(activeTab.results) ? activeTab.results : [];
         updateActiveTab({ 
           result: dataWithConfig,
@@ -509,6 +577,8 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
             curlCommand: 'N/A',
             config: resolvedConfig
           };
+          const evaluated = evaluateAssertions(errorResult, activeTab.assertions || []);
+          (errorResult as any).assertions = evaluated;
           const currentResults = Array.isArray(activeTab.results) ? activeTab.results : [];
           updateActiveTab({ 
             result: errorResult,
@@ -618,6 +688,24 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
     }));
   };
 
+  const addAssertion = (rule: AssertionRule) => {
+    updateActiveTab({
+      assertions: [...(activeTab.assertions || []), rule]
+    });
+  };
+
+  const removeAssertion = (id: string) => {
+    updateActiveTab({
+      assertions: (activeTab.assertions || []).filter(r => r.id !== id)
+    });
+  };
+
+  const updateAssertion = (id: string, updates: Partial<AssertionRule>) => {
+    updateActiveTab({
+      assertions: (activeTab.assertions || []).map(r => r.id === id ? { ...r, ...updates } : r)
+    });
+  };
+
   return {
     state: {
       tabs,
@@ -667,7 +755,10 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
       deleteRequest,
       deleteCollection,
       saveToCollection,
-      handleStartLabTest
+      handleStartLabTest,
+      addAssertion,
+      removeAssertion,
+      updateAssertion
     },
     telemetry,
     ws

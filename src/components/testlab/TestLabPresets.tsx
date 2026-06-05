@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Sparkles, ChevronUp, ChevronDown, Globe, Repeat, Cpu, List, Zap, ShieldAlert, Server, Target 
+  Sparkles, ChevronUp, ChevronDown, Globe, Zap, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RequestConfig } from '@/server/modules/curl-engine';
@@ -12,7 +12,6 @@ interface TestLabPresetsProps {
   onChangeConfig?: (updates: Partial<RequestConfig>) => void;
   setConcurrency: (val: number) => void;
   setIterationsPerUser: (val: number) => void;
-  setAssertions: (arr: { id: string; type: string; value: string }[]) => void;
   setSelectedPresetId: (id: string) => void;
   setSelectedModule: (id: TestModuleId) => void;
   selectedPresetId: string;
@@ -23,7 +22,6 @@ export function TestLabPresets({
   onChangeConfig,
   setConcurrency,
   setIterationsPerUser,
-  setAssertions,
   setSelectedPresetId,
   setSelectedModule,
   selectedPresetId
@@ -32,171 +30,47 @@ export function TestLabPresets({
 
   const presets = [
     {
-      id: 'PRESET_DISTRIBUTED_RATE_LIMIT',
-      name: 'Distributed Rate-Limit Sandbox',
-      desc: 'Checks IP-based limits (throttles to 429 if the same client hits >3 requests/sec).',
-      icon: <Globe size={12} className="text-indigo-400" />,
-      setup: () => {
-        if (onChangeConfig) {
-          onChangeConfig({
-            method: 'GET',
-            url: 'http://localhost:3000/api/demo/rate-limited',
-            body: '',
-            headers: { ...config.headers }
-          });
-        }
-        setConcurrency(5);
-        setIterationsPerUser(10);
-        setAssertions([{ id: '1', type: 'STATUS_CODE', value: '200' }]);
-        setSelectedPresetId('PRESET_DISTRIBUTED_RATE_LIMIT');
-        setSelectedModule('distributed');
-      }
-    },
-    {
-      id: 'PRESET_IDEMPOTENCY',
-      name: 'Idempotency Validation',
-      desc: 'Checks POST / DELETE attempts with idempotency variables and keys.',
-      icon: <Repeat size={12} className="text-blue-400" />,
-      setup: () => {
-        if (onChangeConfig) {
-          onChangeConfig({
-            method: 'POST',
-            body: config.body || JSON.stringify({ transaction_id: "IDEM_TX_" + Math.floor(Math.random() * 100000), amount: 150.00, user_id: 1024 }),
-            headers: {
-              ...config.headers,
-              'Idempotency-Key': 'IDEM_' + Math.random().toString(36).substring(2, 10),
-              'X-Request-ID': 'REQ_' + Math.random().toString(36).substring(2, 10)
-            }
-          });
-        }
-        setAssertions([
-          { id: '1', type: 'STATUS_CODE', value: '250' },
-          { id: '2', type: 'IDEMPOTENCY_MATCH', value: 'true' }
-        ]);
-        setSelectedPresetId('PRESET_IDEMPOTENCY');
-        setSelectedModule('replay');
-      }
-    },
-    {
-      id: 'PRESET_SCHEMA',
-      name: 'Schema & Field Integrity',
-      desc: 'Validates required model fields, type compliance, and data consistency.',
-      icon: <Cpu size={12} className="text-cyan-400" />,
-      setup: () => {
-        setAssertions([
-          { id: '1', type: 'STATUS_CODE', value: '200' },
-          { id: '2', type: 'SCHEMA_KEY', value: 'id' }
-        ]);
-        setSelectedPresetId('PRESET_SCHEMA');
-        setSelectedModule('fuzzer');
-      }
-    },
-    {
-      id: 'PRESET_PAGINATION',
-      name: 'Pagination Boundaries',
-      desc: 'Checks offset/limit boundaries, sorting directions, and cursors.',
-      icon: <List size={12} className="text-amber-400" />,
-      setup: () => {
-        try {
-          const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
-          urlObj.searchParams.set('page', '1');
-          urlObj.searchParams.set('limit', '10');
-          urlObj.searchParams.set('sort', 'desc');
-          if (onChangeConfig) {
-            onChangeConfig({ url: urlObj.toString() });
-          }
-        } catch (e) {
-          try {
-            if (onChangeConfig) {
-              onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'page=1&limit=10&sort=desc' });
-            }
-          } catch {}
-        }
-        setAssertions([
-          { id: '1', type: 'STATUS_CODE', value: '200' },
-          { id: '2', type: 'SCHEMA_KEY', value: 'limit' }
-        ]);
-        setSelectedPresetId('PRESET_PAGINATION');
-        setSelectedModule('basic_query');
-      }
-    },
-    {
       id: 'PRESET_PERFORMANCE',
-      name: 'SLA Performance Test',
-      desc: 'Evaluates peak latencies to keep transactions strictly under 500ms.',
+      name: 'SLA Performance Test (Blast Load)',
+      desc: 'Evaluates peak API latencies under a concentrated concurrent load to measure SLA limits.',
       icon: <Zap size={12} className="text-orange-400" />,
       setup: () => {
-        setConcurrency(10);
+        setConcurrency(12);
         setIterationsPerUser(5);
-        setAssertions([
-          { id: '1', type: 'STATUS_CODE', value: '200' },
-          { id: '2', type: 'LATENCY_LESS_THAN', value: '500' }
-        ]);
         setSelectedPresetId('PRESET_PERFORMANCE');
         setSelectedModule('blast');
       }
     },
     {
-      id: 'PRESET_SECURITY',
-      name: 'Security Shield Audit',
-      desc: 'Audits unescaped vectors, safe protocols, and missing CORS security headers.',
-      icon: <ShieldAlert size={12} className="text-rose-400" />,
-      setup: () => {
-        setAssertions([
-          { id: '1', type: 'HTTPS_ENFORCED', value: 'true' },
-          { id: '2', type: 'HEADER_EXISTS', value: 'x-frame-options' }
-        ]);
-        setSelectedPresetId('PRESET_SECURITY');
-        setSelectedModule('security_audit');
-      }
-    },
-    {
-      id: 'PRESET_VERSIONING',
-      name: 'API Version Verification',
-      desc: 'Tests API clients version selectors (Accept or custom HTTP headers).',
-      icon: <Server size={12} className="text-violet-400" />,
+      id: 'PRESET_DISTRIBUTED_RATE_LIMIT',
+      name: 'Distributed Rate-Limit Check',
+      desc: 'Tests IP-rate limiting by spawning requests simulated across multiple geographical origin IPs.',
+      icon: <Globe size={12} className="text-indigo-400" />,
       setup: () => {
         if (onChangeConfig) {
           onChangeConfig({
-            headers: {
-              ...config.headers,
-              'Accept': 'application/vnd.myapi.v2+json',
-              'X-API-Version': '2026-05-31'
-            }
+            method: 'GET',
+            url: config.url || 'http://localhost:3000/api/demo/rate-limited',
+            body: '',
+            headers: { ...config.headers }
           });
         }
-        setAssertions([
-          { id: '1', type: 'STATUS_CODE', value: '200' },
-          { id: '2', type: 'HEADER_EXISTS', value: 'x-api-version' }
-        ]);
-        setSelectedPresetId('PRESET_VERSIONING');
-        setSelectedModule('basic_query');
+        setConcurrency(6);
+        setIterationsPerUser(8);
+        setSelectedPresetId('PRESET_DISTRIBUTED_RATE_LIMIT');
+        setSelectedModule('distributed');
       }
     },
     {
-      id: 'PRESET_ISOLATION',
-      name: 'Transactional Isolation Check',
-      desc: 'Validates that testing records use dynamic variables and safe boundaries.',
-      icon: <Target size={12} className="text-emerald-400" />,
+      id: 'PRESET_SECURITY',
+      name: 'Security Shield Audit / Scan',
+      desc: 'Injects systematic parameters checks (SQLi, XSS, Path Traversal) to verify input sanitation.',
+      icon: <ShieldAlert size={12} className="text-rose-400" />,
       setup: () => {
-        const randVal = Math.floor(Math.random() * 999999);
-        try {
-          const urlObj = new URL(config.url || 'http://localhost:3000/api/endpoint');
-          urlObj.searchParams.set('isolated_tx_id', 'TX_' + randVal);
-          if (onChangeConfig) {
-            onChangeConfig({ url: urlObj.toString() });
-          }
-        } catch (e) {
-          if (onChangeConfig) {
-            onChangeConfig({ url: (config.url || '') + (config.url?.includes('?') ? '&' : '?') + 'isolated_tx_id=TX_' + randVal });
-          }
-        }
-        setAssertions([
-          { id: '1', type: 'STATUS_CODE', value: '200' },
-          { id: '2', type: 'CONTAINS_TEXT', value: 'TX_' }
-        ]);
-        setSelectedPresetId('PRESET_ISOLATION');
-        setSelectedModule('fuzzer');
+        setConcurrency(1);
+        setIterationsPerUser(6);
+        setSelectedPresetId('PRESET_SECURITY');
+        setSelectedModule('security_audit');
       }
     }
   ];
@@ -206,20 +80,23 @@ export function TestLabPresets({
       <button
         type="button"
         onClick={() => setShowPresets(!showPresets)}
-        className="flex items-center justify-between w-full hover:text-white transition-colors cursor-pointer select-none outline-none"
+        aria-expanded={showPresets}
+        aria-controls="automated-qa-presets-list"
+        className="flex items-center justify-between w-full hover:text-white transition-colors cursor-pointer select-none outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-[#0B0D11] rounded text-left font-sans"
       >
         <div className="flex items-center gap-2">
           <Sparkles size={14} className="text-violet-400" />
           <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">Automated QA Presets</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[9px] text-slate-500 font-mono font-bold uppercase">{showPresets ? 'COLLAPSE' : 'EXPAND'}</span>
-          {showPresets ? <ChevronUp size={12} className="text-slate-500" /> : <ChevronDown size={12} className="text-slate-500" />}
+          <span className="text-[9px] text-slate-300 font-mono font-bold uppercase">{showPresets ? 'COLLAPSE' : 'EXPAND'}</span>
+          {showPresets ? <ChevronUp size={12} className="text-slate-300" /> : <ChevronDown size={12} className="text-slate-300" />}
         </div>
       </button>
       <AnimatePresence>
         {showPresets && (
           <motion.div
+            id="automated-qa-presets-list"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -227,9 +104,9 @@ export function TestLabPresets({
             className="overflow-hidden space-y-3 pt-1"
           >
             <p className="text-[10px] text-slate-400 font-sans leading-relaxed">
-              Click a test suite preset to auto-initialize headers, bodies, parameters, and assertions for verification.
+              Select an automated test preset to quickly align concurrency, iterations, and modules with key QA testing routines.
             </p>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2" role="group" aria-label="Available QA Presets">
               {presets.map(p => {
                 const isActive = selectedPresetId === p.id;
                 return (
@@ -241,18 +118,18 @@ export function TestLabPresets({
                     }}
                     type="button"
                     className={cn(
-                      "w-full text-left p-2.5 rounded-lg border transition-all text-xs font-mono flex items-start gap-2.5 cursor-pointer select-none",
+                      "w-full text-left p-2.5 rounded-lg border transition-all text-xs font-mono flex items-start gap-2.5 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-[#0B0D11]",
                       isActive
                         ? "bg-violet-950/40 border-violet-500/40 text-white shadow-lg"
-                        : "bg-black/30 border-slate-800/80 text-slate-350 hover:bg-slate-900/60 hover:border-slate-700 hover:text-white"
+                        : "bg-black/30 border-slate-800/80 text-slate-300 hover:bg-slate-900/60 hover:border-slate-700 hover:text-white"
                     )}
                   >
                     <div className="p-1.5 bg-black/60 rounded border border-slate-850 shrink-0">
                       {p.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-extrabold text-slate-200 block text-[11px] leading-tight select-none">{p.name}</span>
-                      <span className="text-[10px] text-slate-455 leading-relaxed font-sans block mt-0.5 select-none">{p.desc}</span>
+                      <span className="font-extrabold text-slate-100 block text-[11px] leading-tight">{p.name}</span>
+                      <span className="text-[10px] text-slate-400 leading-relaxed font-sans block mt-0.5">{p.desc}</span>
                     </div>
                   </button>
                 );

@@ -58,24 +58,24 @@ export function VariablesManager({ variables, onVariablesChange }: VariablesMana
           </div>
         ) : (
           (Object.entries(variables) as [string, string][]).map(([key, value], idx) => (
-            <div key={idx} className="flex gap-3 items-center group animate-fadeIn">
-              <div className="flex-1 flex gap-2">
+            <div key={idx} className="flex gap-2 sm:gap-3 items-center group animate-fadeIn w-full border-b border-slate-900/40 pb-3 last:border-none last:pb-0 sm:border-none sm:pb-0">
+              <div className="flex-1 flex flex-col sm:flex-row gap-2">
                 <input
                   value={key}
                   onChange={(e) => updateVar(key, e.target.value, value)}
                   placeholder="VARIABLE_NAME"
-                  className="flex-1 border border-slate-800 bg-slate-900/60 px-4 py-2.5 rounded-lg focus:border-emerald-500/50 outline-none transition-all text-emerald-400 font-mono text-xs sm:text-sm font-semibold tracking-wide"
+                  className="w-full sm:flex-1 border border-slate-800 bg-slate-900/60 px-4 py-2 rounded-lg focus:border-emerald-500/50 outline-none transition-all text-emerald-400 font-mono text-xs sm:text-sm font-semibold tracking-wide"
                 />
                 <input
                   value={value}
                   onChange={(e) => updateVar(key, key, e.target.value)}
                   placeholder="Value"
-                  className="flex-1 border border-slate-800 bg-slate-900/60 px-4 py-2.5 rounded-lg focus:border-emerald-500/50 outline-none transition-all text-slate-100 font-mono text-xs sm:text-sm font-medium"
+                  className="w-full sm:flex-1 border border-slate-800 bg-slate-900/60 px-4 py-2 rounded-lg focus:border-emerald-500/50 outline-none transition-all text-slate-100 font-mono text-xs sm:text-sm font-medium"
                 />
               </div>
               <button 
                 onClick={() => removeVar(key)}
-                className="text-slate-500 hover:text-rose-500 transition-colors p-2.5 hover:bg-slate-900/50 rounded-lg border border-transparent hover:border-slate-800/50"
+                className="text-slate-500 hover:text-rose-500 transition-colors p-2 hover:bg-slate-900/50 rounded-lg border border-transparent hover:border-slate-800/50 self-end sm:self-center shrink-0 mb-1 sm:mb-0"
                 title="Remove variable"
               >
                 <X size={16} />

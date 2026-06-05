@@ -148,6 +148,24 @@ export function NetworkLogViewer({
                     )}>
                       {method}
                     </span>
+                    
+                    {(() => {
+                      const assertionResults = (res as any).assertions || [];
+                      if (assertionResults.length === 0) return null;
+                      const passedAssertions = assertionResults.filter((a: any) => a.passed).length;
+                      const allPassed = passedAssertions === assertionResults.length;
+                      return (
+                        <span className={cn(
+                          "text-[8px] font-black leading-none font-mono tracking-wider shrink-0 uppercase border px-1.5 py-0.5 rounded-[2px]",
+                          allPassed 
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-550/20" 
+                            : "bg-rose-500/10 text-rose-400 border-rose-550/20 animate-pulse"
+                        )}>
+                          {passedAssertions}/{assertionResults.length} OK
+                        </span>
+                      );
+                    })()}
+                    
                     <span className={cn(
                       "font-mono text-xs truncate tracking-tight transition-colors",
                       isSelected ? "text-slate-950 dark:text-white font-black" : "text-slate-400 group-hover:text-slate-200"

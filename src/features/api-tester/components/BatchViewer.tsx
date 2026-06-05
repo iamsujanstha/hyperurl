@@ -194,7 +194,7 @@ export function BatchViewer({
           <div className="flex-1 overflow-y-auto p-4 px-6 custom-scrollbar space-y-1.5 bg-black">
             <AnimatePresence initial={false}>
 
-              {[...filteredResults].slice(-55).reverse().map((res, i) => {
+              {[...filteredResults].slice(-55).map((res, i) => {
                 const originalIndex = results.findIndex(r => r.id === res.id) + 1;
                 const rt = res.responseTime;
                 const isSelected = selectedResult?.id === res.id;

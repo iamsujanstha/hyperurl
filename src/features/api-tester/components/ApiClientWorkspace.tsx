@@ -11,11 +11,13 @@ import {
   FileJson, 
   Database, 
   Layers,
-  Plus
+  Plus,
+  ShieldCheck,
+  X
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
-import { Tab, Collection } from '@/features/api-tester/types';
+import { Tab, Collection, AssertionRule } from '@/features/api-tester/types';
 import { HeaderRow } from './HeaderRow';
 import { BatchViewer } from './BatchViewer';
 import { NetworkLogViewer } from './NetworkLogViewer';
@@ -44,6 +46,10 @@ interface ApiClientWorkspaceProps {
   startResizeQuery: (e: React.MouseEvent) => void;
   startResizeVariables: (e: React.MouseEvent) => void;
   startResizePayloadJson: (e: React.MouseEvent) => void;
+
+  addAssertion: (rule: AssertionRule) => void;
+  removeAssertion: (id: string) => void;
+  updateAssertion: (id: string, updates: Partial<AssertionRule>) => void;
 }
 
 export function ApiClientWorkspace({
@@ -67,19 +73,38 @@ export function ApiClientWorkspace({
 
   startResizeQuery,
   startResizeVariables,
-  startResizePayloadJson
+  startResizePayloadJson,
+
+  addAssertion,
+  removeAssertion,
+  updateAssertion
 }: ApiClientWorkspaceProps) {
+  const [windowWidth, setWindowWidth] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [activeMobilePanel, setActiveMobilePanel] = React.useState<'request' | 'response'>('request');
+
+  React.useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab.loading) {
+      setActiveMobilePanel('response');
+    }
+  }, [activeTab.loading]);
+
   const resolvedWidthStyle = useMemo(() => {
-    return typeof window !== 'undefined' && window.innerWidth >= 1024 
+    return windowWidth >= 1024 
       ? { width: `${splitPercent}%` } 
       : { width: '100%' };
-  }, [splitPercent]);
+  }, [splitPercent, windowWidth]);
 
   const resolvedRightWidthStyle = useMemo(() => {
-    return typeof window !== 'undefined' && window.innerWidth >= 1024 
+    return windowWidth >= 1024 
       ? { width: `${100 - splitPercent}%` } 
       : { width: '100%' };
-  }, [splitPercent]);
+  }, [splitPercent, windowWidth]);
 
   return (
     <motion.div 
@@ -89,10 +114,44 @@ export function ApiClientWorkspace({
       transition={{ duration: 0.15 }}
       className="absolute inset-0 flex flex-col lg:flex-row gap-0 overflow-hidden font-sans"
     >
+      {/* Mobile view sub-segmented control tabs (Request config vs Response view) */}
+      <div className="lg:hidden flex bg-[#0E121A] border-b border-slate-850 p-1.5 shrink-0 h-11 items-center gap-1.5 select-none w-full">
+        <button
+          onClick={() => setActiveMobilePanel('request')}
+          className={cn(
+            "flex-1 py-1.5 px-3 rounded text-[11px] font-mono font-black uppercase transition-all tracking-wider text-center cursor-pointer",
+            activeMobilePanel === 'request'
+              ? "bg-[#1E293B] text-emerald-400 border border-emerald-500/25 shadow-sm"
+              : "text-slate-500 hover:text-slate-300"
+          )}
+          type="button"
+        >
+          {activeTab.config.method} REQUEST
+        </button>
+        <button
+          onClick={() => setActiveMobilePanel('response')}
+          className={cn(
+            "flex-1 py-1.5 px-3 rounded text-[11px] font-mono font-black uppercase transition-all tracking-wider text-center cursor-pointer relative",
+            activeMobilePanel === 'response'
+              ? "bg-[#1E293B] text-emerald-400 border border-emerald-500/25 shadow-sm"
+              : "text-slate-500 hover:text-slate-300"
+          )}
+          type="button"
+        >
+          RESPONSE
+          {activeTab.loading && (
+            <span className="absolute right-3.5 top-2.5 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          )}
+        </button>
+      </div>
+
       {/* LHS: Request Config Panel */}
       <div 
-        style={resolvedWidthStyle}
-        className="w-full lg:w-auto lg:flex-none border-r border-slate-850 flex flex-col bg-[#0B0D11] overflow-y-auto no-scrollbar"
+        style={windowWidth >= 1024 ? resolvedWidthStyle : undefined}
+        className={cn(
+          "border-r border-slate-850 flex flex-col bg-[#0B0D11] shrink-0",
+          windowWidth >= 1024 ? "w-auto lg:flex-none h-full" : (activeMobilePanel === 'request' ? "w-full flex-1 overflow-hidden" : "hidden")
+        )}
       >
         <div className="p-4 border-b border-slate-900/60 flex flex-col gap-4 shrink-0 relative bg-[#090C11]/30">
           {/* REST vs GraphQL Selection Grid Toggle */}
@@ -330,6 +389,109 @@ export function ApiClientWorkspace({
             </div>
           </section>
 
+          {/* Assertions Engine Section */}
+          <section className="space-y-3.5 pt-1 border-t border-slate-900/40">
+            <div className="flex items-center justify-between select-none">
+              <label className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2 font-bold font-sans">
+                <ShieldCheck size={12} className="text-emerald-400 animate-pulse" /> Assertions_Config ({activeTab.assertions?.length || 0})
+              </label>
+              <button 
+                type="button"
+                onClick={() => addAssertion({ id: uuidv4(), type: 'status', value: '200' })}
+                className="text-emerald-400 hover:text-white transition-colors p-1.5 bg-[#12161F] hover:bg-slate-900 rounded-lg shadow-sm active:scale-95 cursor-pointer"
+                title="Add validation assertion rule"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {(!activeTab.assertions || activeTab.assertions.length === 0) ? (
+                <div className="text-center p-4 bg-slate-950/25 border border-slate-905 border-dashed rounded-lg text-slate-500 text-[10px] font-mono uppercase">
+                  No active assertions configured. Add status or body validations.
+                </div>
+              ) : (
+                activeTab.assertions.map((rule) => (
+                  <div key={rule.id} className="flex flex-col gap-2.5 bg-[#0A0C11] p-3 rounded-lg border border-slate-900 font-mono text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Rule Setup</span>
+                      <button
+                        type="button"
+                        onClick={() => removeAssertion(rule.id)}
+                        className="text-slate-500 hover:text-rose-400 transition-colors p-1 cursor-pointer"
+                        title="Delete assertions rule"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {/* Assertion Type Selection */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Type</label>
+                        <select
+                          value={rule.type}
+                          onChange={(e) => updateAssertion(rule.id, { type: e.target.value as any, value: e.target.value === 'graphql_no_errors' ? '' : rule.value })}
+                          className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-slate-350 font-bold focus:border-emerald-500/40 text-[10px]"
+                        >
+                          <option value="status">HTTP Status Code</option>
+                          <option value="latency">Response Time SLA</option>
+                          <option value="body_contains">Response body contains string</option>
+                          <option value="json_path">JSON Path matcher (e.g. data.id)</option>
+                          <option value="header_matches">Header key/value match</option>
+                          <option value="graphql_no_errors">GraphQL "errors" block check</option>
+                        </select>
+                      </div>
+
+                      {/* Expected Value input */}
+                      {rule.type !== 'graphql_no_errors' && (
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">Expected Value</label>
+                          <input
+                            type="text"
+                            value={rule.value}
+                            onChange={(e) => updateAssertion(rule.id, { value: e.target.value })}
+                            placeholder={
+                              rule.type === 'status' ? "e.g. 200 or 2xx" :
+                              rule.type === 'latency' ? "Max latency ms (e.g. 500)" :
+                              rule.type === 'body_contains' ? "Search characters" : "Expected value or *"
+                            }
+                            className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 outline-none text-[10px]"
+                          />
+                        </div>
+                      )}
+
+                      {/* GraphQL no errors block */}
+                      {rule.type === 'graphql_no_errors' && (
+                        <div className="flex items-center justify-center bg-violet-950/15 border border-violet-900/30 rounded p-2 text-center select-none md:col-span-1">
+                          <span className="text-[9px] font-black text-violet-400 tracking-wider">
+                            GraphQL errors list is empty
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Extra setups for JSON Path or Headers */}
+                    {(rule.type === 'json_path' || rule.type === 'header_matches') && (
+                      <div className="flex flex-col gap-1 pt-1 border-t border-slate-900/50">
+                        <label className="text-[8px] uppercase tracking-wide text-slate-500 font-black">
+                          {rule.type === 'json_path' ? 'JSON Path' : 'Header Key'}
+                        </label>
+                        <input
+                          type="text"
+                          value={rule.extra || ''}
+                          onChange={(e) => updateAssertion(rule.id, { extra: e.target.value })}
+                          placeholder={rule.type === 'json_path' ? "e.g. data.id or errors.0.message" : "e.g. Content-Type"}
+                          className="w-full bg-[#11141C] border border-slate-800 rounded px-2 py-1 text-emerald-400 placeholder-slate-650 outline-none text-[10px]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
           {/* Method Bodys / JSON payloads section */}
           {['POST', 'PUT', 'PATCH'].includes(activeTab.config.method) && (
             <section className="space-y-3 pt-1">
@@ -446,8 +608,11 @@ export function ApiClientWorkspace({
 
       {/* RHS output viewer wrapper */}
       <div 
-        style={resolvedRightWidthStyle}
-        className="w-full lg:w-auto lg:flex-1 flex flex-col bg-black overflow-hidden border-t lg:border-t-0 border-slate-850"
+        style={windowWidth >= 1024 ? resolvedRightWidthStyle : undefined}
+        className={cn(
+          "flex flex-col bg-black overflow-hidden",
+          windowWidth >= 1024 ? "w-auto lg:flex-1 h-full border-t lg:border-t-0 border-slate-850" : (activeMobilePanel === 'response' ? "w-full flex-1" : "hidden")
+        )}
       >
         {activeTab.batchMode ? (
           <BatchViewer 

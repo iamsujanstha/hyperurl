@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Cpu, X, Plus, Minus } from 'lucide-react';
+import { Cpu, X, Plus, Minus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Telemetry } from '@/features/api-tester/types';
 
@@ -110,8 +110,22 @@ export function WorkerPoolPopover({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                    <div className="flex items-center gap-1.5 ml-2 shrink-0 p-0.5">
                       <span className="text-[8.5px] text-[#64748B] font-bold">{worker.activeTime}s</span>
+                      <button
+                        type="button"
+                        onClick={() => ws?.send(JSON.stringify({ type: 'trigger-math-workload', id: worker.id }))}
+                        className={cn(
+                          "p-1 border border-transparent rounded-md transition-all cursor-pointer",
+                          worker.status === 'ACTIVE' 
+                            ? "text-[#F59E0B] hover:bg-amber-500/10" 
+                            : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                        )}
+                        title="Stress Test Thread (CPU Math)"
+                        disabled={worker.status === 'ACTIVE'}
+                      >
+                        <Zap size={10.5} className={cn(worker.status === 'ACTIVE' && "animate-bounce")} />
+                      </button>
                       <button
                         type="button"
                         onClick={() => ws?.send(JSON.stringify({ type: 'terminate-worker', id: worker.id }))}

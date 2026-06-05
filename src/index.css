@@ -94,6 +94,13 @@
   color-scheme: light !important;
 }
 
+/* Ensure selected view of text is highly visible and dark-contrast compliant in light theme */
+.theme-light ::selection,
+.theme-light *::selection {
+  background-color: #BFDBFE !important;
+  color: #1E3A8A !important;
+}
+
 /* Force standard text elements inside light theme to have excellent dark contrast */
 .theme-light,
 .theme-light p,

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { RequestConfig } from '@/server/modules/curl-engine';
 import { TEST_MODULES, TestModuleId, TestModule } from '../TestLabData';
 import { TestLabPresets } from './TestLabPresets';
-import { TestLabAssertions } from './TestLabAssertions';
+import { Telemetry } from '@/features/api-tester/types';
 
 interface TestLabSidebarProps {
   config: RequestConfig;
@@ -31,15 +31,11 @@ interface TestLabSidebarProps {
   setSelectedRegions: (regions: string[]) => void;
   selectedPresetId: string;
   setSelectedPresetId: (id: string) => void;
-  assertions: { id: string, type: string, value: string }[];
-  addAssertion: () => void;
-  removeAssertion: (id: string) => void;
-  updateAssertion: (id: string, updates: Partial<{ type: string, value: string }>) => void;
-  setAssertions: (arr: { id: string, type: string, value: string }[]) => void;
   curlStrategy: string;
   onStartTest: () => void;
   onAbort: () => void;
   onChangeConfig?: (updates: Partial<RequestConfig>) => void;
+  telemetry: Telemetry;
 }
 
 const getModuleIcon = (id: TestModuleId) => {
@@ -84,15 +80,11 @@ export function TestLabSidebar({
   setSelectedRegions,
   selectedPresetId,
   setSelectedPresetId,
-  assertions,
-  addAssertion,
-  removeAssertion,
-  updateAssertion,
-  setAssertions,
   curlStrategy,
   onStartTest,
   onAbort,
-  onChangeConfig
+  onChangeConfig,
+  telemetry
 }: TestLabSidebarProps): React.JSX.Element {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'perf' | 'resilience' | 'security'>('all');
   const [showLabCurl, setShowLabCurl] = useState(false);
@@ -156,7 +148,7 @@ export function TestLabSidebar({
                 >
                   <div className={cn(
                     "p-1.5 rounded-md border",
-                    isActive ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-[#090D14]/50 border-slate-850/80 text-slate-505"
+                    isActive ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-[#090D14]/50 border-slate-850/80 text-slate-400"
                   )}>
                     {module.icon}
                   </div>
@@ -176,10 +168,11 @@ export function TestLabSidebar({
               <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block border-b border-slate-800 pb-1.5">Concurrency Engine</span>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-slate-400 uppercase font-extrabold flex items-center gap-1.5">
+                  <label htmlFor="concurrency-workers" className="text-[10px] font-mono text-slate-300 uppercase font-extrabold flex items-center gap-1.5">
                     <Zap size={12} className="text-amber-400" /> Workers
                   </label>
                   <input 
+                    id="concurrency-workers"
                     type="number" 
                     value={concurrency}
                     onChange={(e) => {
@@ -187,14 +180,15 @@ export function TestLabSidebar({
                       setSelectedPresetId('');
                     }}
                     disabled={loading}
-                    className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
+                    className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-bold outline-none transition-all shadow-inner"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-mono text-slate-330 uppercase font-extrabold flex items-center gap-1.5">
+                  <label htmlFor="concurrency-iterations" className="text-xs font-mono text-slate-300 uppercase font-extrabold flex items-center gap-1.5">
                     <Repeat size={12} className="text-blue-400" /> Iterations
                   </label>
                   <input 
+                    id="concurrency-iterations"
                     type="number" 
                     value={iterationsPerUser}
                     onChange={(e) => {
@@ -202,28 +196,51 @@ export function TestLabSidebar({
                       setSelectedPresetId('');
                     }}
                     disabled={loading}
-                    className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 font-bold outline-none transition-all shadow-inner"
+                    className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-bold outline-none transition-all shadow-inner"
                   />
                 </div>
               </div>
               <div className="flex items-center justify-between bg-black/40 p-3 border border-slate-800 rounded-lg text-xs font-mono">
-                <span className="text-slate-350 font-bold">Cumulative Load:</span>
+                <span className="text-slate-300 font-bold">Cumulative Load:</span>
                 <span className="text-emerald-400 font-black text-sm">{totalIterations} requests total</span>
               </div>
+              {telemetry && (
+                <div className="bg-slate-900/20 p-3.5 border border-slate-800/80 rounded-xl text-[11px] font-mono leading-relaxed space-y-1.5 select-none transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-350 font-bold uppercase tracking-wider text-[9px]">Multi-Thread Engine:</span>
+                    {telemetry.activeWorkers > 0 ? (
+                      <span className="text-[#38BDF8] font-extrabold flex items-center gap-1">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#38BDF8] shadow-[0_0_8px_#38BDF8] animate-pulse"></span>
+                        REAL-THREAD POOL ({telemetry.activeWorkers} ACTIVE)
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-bold uppercase tracking-wide text-[10px]">
+                        VIRTUAL LOOP
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-normal font-sans">
+                    {telemetry.activeWorkers > 0 
+                      ? "✓ Background Node.js worker threads spawned! Stress test execution is distributed across physical OS threads." 
+                      : "ⓘ Spawn real worker threads in the top-bar button to delegate execution to physical CPU threads."}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-mono text-slate-400 uppercase font-bold flex items-center gap-1.5">
+              <label htmlFor="error-tolerance" className="text-[10px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
                 <Settings2 size={12} className="text-violet-400" /> Error tolerance
               </label>
               <select 
+                id="error-tolerance"
                 value={retries}
                 onChange={(e) => {
                   setRetries(parseInt(e.target.value));
                   setSelectedPresetId('');
                 }}
                 disabled={loading}
-                className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 outline-none cursor-pointer appearance-none"
+                className="w-full bg-black border border-slate-700 hover:border-slate-500 rounded-lg px-3 py-2 text-sm font-mono text-white focus:border-emerald-500 outline-none cursor-pointer appearance-none focus:ring-1 focus:ring-emerald-500"
               >
                 <option value={0} className="bg-slate-900 text-white">NO RETRY (FAIL_FAST)</option>
                 <option value={1} className="bg-slate-900 text-white">1X RETRY (RAPID_REATTEMPT)</option>
@@ -239,19 +256,20 @@ export function TestLabSidebar({
             <div className="text-xs font-black text-rose-455 uppercase tracking-widest flex items-center gap-2">
               <ShieldAlert size={14} /> Security shield configuration
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" role="group" aria-label="Security Testing Presets">
               {[
                 { key: 'sqli', label: 'PROBE SQL INJECTIONS (SQLI)' },
                 { key: 'xss', label: 'PROBE CROSS-SITE SCRIPTING (XSS)' },
                 { key: 'pathTraversal', label: 'LOCAL PATH TRAVERSAL PROBE' },
                 { key: 'headersAuditor', label: 'AUDIT RESPONSE HEADERS HYGIENE' }
               ].map(item => (
-                <label key={item.key} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
+                <label key={item.key} htmlFor={`security-${item.key}`} className="flex items-center gap-3.5 text-xs font-mono text-slate-300 hover:text-white cursor-pointer select-none">
                   <input 
+                    id={`security-${item.key}`}
                     type="checkbox" 
                     checked={(securityChecks as any)[item.key]} 
                     onChange={(e) => setSecurityChecks({ ...securityChecks, [item.key]: e.target.checked })}
-                    className="w-4 h-4 accent-rose-500 bg-black border-slate-700 rounded transition-all" 
+                    className="w-4 h-4 accent-rose-500 bg-black border-slate-700 rounded transition-all focus:ring-1 focus:ring-rose-500" 
                   />
                   {item.label}
                 </label>
@@ -265,18 +283,19 @@ export function TestLabSidebar({
             <div className="text-xs font-black text-purple-400 uppercase tracking-widest flex items-center gap-2 font-mono">
               <Cpu size={14} /> Mutation fuzzer engine
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" role="group" aria-label="JSON Mutation Fuzzer Targets">
               {[
                 { key: 'keyDeletions', label: 'MUTATE BY DELETING INTEGRAL KEYPAIRS' },
                 { key: 'typeMutations', label: 'CROSS-MUTATE TYPES (STRING VS NUMBER)' },
                 { key: 'bufferOverflow', label: 'FLOOD BY BUFFER OVERFLOWS (1000x STRING)' }
               ].map(item => (
-                <label key={item.key} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
+                <label key={item.key} htmlFor={`fuzzer-${item.key}`} className="flex items-center gap-3.5 text-xs font-mono text-slate-300 hover:text-white cursor-pointer select-none">
                   <input 
+                    id={`fuzzer-${item.key}`}
                     type="checkbox" 
                     checked={(fuzzerChecks as any)[item.key]} 
                     onChange={(e) => setFuzzerChecks({ ...fuzzerChecks, [item.key]: e.target.checked })}
-                    className="w-4 h-4 accent-purple-550 bg-black border-slate-700 rounded transition-all" 
+                    className="w-4 h-4 accent-purple-500 bg-black border-slate-700 rounded transition-all focus:ring-1 focus:ring-purple-500" 
                   />
                   {item.label}
                 </label>
@@ -290,12 +309,14 @@ export function TestLabSidebar({
             <div className="text-xs font-black text-orange-400 uppercase tracking-widest flex items-center gap-2 font-mono">
               <Flame size={14} /> Entropy Chaos Injection
             </div>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-slate-400 font-extrabold">MAX JITTER WAVE DELAY</span>
+                <span className="text-slate-300 font-extrabold">MAX JITTER WAVE DELAY</span>
                 <span className="text-orange-400 font-black">{chaosAmplitude}ms</span>
               </div>
+              <label htmlFor="chaos-jitter-delay" className="sr-only">Maximum jitter delay configuration (ms)</label>
               <input 
+                id="chaos-jitter-delay"
                 type="range" 
                 min={50} 
                 max={1500} 
@@ -303,9 +324,9 @@ export function TestLabSidebar({
                 value={chaosAmplitude}
                 onChange={(e) => setChaosAmplitude(parseInt(e.target.value))}
                 disabled={loading}
-                className="w-full accent-orange-500 cursor-pointer h-1.5 bg-black rounded"
+                className="w-full accent-orange-500 cursor-pointer h-1.5 bg-black rounded outline-none focus:ring-2 focus:ring-orange-500"
               />
-              <div className="text-[10px] text-slate-450 leading-relaxed font-sans">
+              <div className="text-[10px] text-slate-300 leading-relaxed font-sans">
                 Entropy adds packet delays and forces structural failures to stress resilience layers.
               </div>
             </div>
@@ -315,10 +336,10 @@ export function TestLabSidebar({
         {selectedModule === 'distributed' && (
           <div className="space-y-3">
             <div className="p-4 bg-indigo-950/20 rounded-lg border border-indigo-500/30 space-y-3">
-              <div className="text-xs font-black text-indigo-405 uppercase tracking-widest flex items-center gap-2 font-mono">
+              <div className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 font-mono">
                 <Globe size={14} /> Global Simulation Nodes
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" role="group" aria-label="Distributed Region Routing Options">
                 {[
                   { id: 'us', label: '🇺🇸 NORTH AMERICA (US-EAST / US-WEST)' },
                   { id: 'eu', label: '🇩🇪 EUROPE (FRANKFURT / LONDON / PARIS)' },
@@ -327,8 +348,9 @@ export function TestLabSidebar({
                 ].map(region => {
                   const isChecked = selectedRegions.includes(region.id);
                   return (
-                    <label key={region.id} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
+                    <label key={region.id} htmlFor={`region-${region.id}`} className="flex items-center gap-3.5 text-xs font-mono text-slate-350 hover:text-white cursor-pointer select-none">
                       <input 
+                        id={`region-${region.id}`}
                         type="checkbox" 
                         checked={isChecked} 
                         onChange={(e) => {
@@ -340,7 +362,7 @@ export function TestLabSidebar({
                             }
                           }
                         }}
-                        className="w-4 h-4 accent-indigo-500 bg-black border-slate-700 rounded transition-all" 
+                        className="w-4 h-4 accent-indigo-500 bg-black border-slate-700 rounded transition-all focus:ring-1 focus:ring-indigo-500" 
                       />
                       {region.label}
                     </label>
@@ -357,20 +379,9 @@ export function TestLabSidebar({
           onChangeConfig={onChangeConfig}
           setConcurrency={setConcurrency}
           setIterationsPerUser={setIterationsPerUser}
-          setAssertions={setAssertions}
           setSelectedPresetId={setSelectedPresetId}
           setSelectedModule={setSelectedModule}
           selectedPresetId={selectedPresetId}
-        />
-
-        {/* Assertions Criteria */}
-        <TestLabAssertions 
-          assertions={assertions}
-          loading={loading}
-          addAssertion={addAssertion}
-          updateAssertion={updateAssertion}
-          removeAssertion={removeAssertion}
-          setSelectedPresetId={setSelectedPresetId}
         />
 
         {/* Target Curl Strategy Code Previews */}

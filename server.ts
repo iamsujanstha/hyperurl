@@ -3,8 +3,9 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
-import { CurlEngine, RequestConfig } from "./src/server/modules/curl-engine";
-import { RequestRunner, BatchConfig } from "./src/server/modules/runner";
+import { Worker } from "node:worker_threads";
+import { CurlEngine, RequestConfig, CurlResult } from "./src/server/modules/curl-engine";
+import { RequestRunner, BatchConfig, getRandomRegionIp } from "./src/server/modules/runner";
 import { Store } from "./src/server/modules/store";
 
 async function startServer() {
@@ -18,8 +19,11 @@ async function startServer() {
 
   // Intercept and return clean JSON error for body parser syntax errors
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (err instanceof SyntaxError && "status" in err && err.status === 400 && "body" in err) {
-      res.status(400).json({ error: "Malformed JSON payload in request body", message: err.message });
+    if (err instanceof SyntaxError && "status" in err && err.status === 400) {
+      res.status(400).json({ 
+        error: "Malformed JSON payload or empty request body with JSON Content-Type", 
+        message: err.message || "Failed to parse JSON request body" 
+      });
       return;
     }
     next(err);
@@ -89,7 +93,7 @@ async function startServer() {
   app.post("/api/orders/broken/place", async (req, res) => {
     // Intentional Race Condition: Read -> Wait -> Write
     const currentBalance = globalBalance;
-    const amount = req.body.amount || 10;
+    const amount = (req.body && req.body.amount) || 10;
     
     // Simulate some async processing time to widen the race window
     await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
@@ -106,7 +110,7 @@ async function startServer() {
 
   app.post("/api/orders/fixed/place", async (req, res) => {
     // Atomic-like update
-    const amount = req.body.amount || 10;
+    const amount = (req.body && req.body.amount) || 10;
     
     if (globalBalance >= amount) {
       globalBalance -= amount;
@@ -121,6 +125,9 @@ async function startServer() {
   app.post("/api/execute", async (req, res) => {
     const config: RequestConfig = req.body;
     console.log(`Executing request to: ${config.url}`);
+    console.log("EXECUTE CONFIG METHOD:", config.method);
+    console.log("EXECUTE CONFIG HEADERS:", JSON.stringify(config.headers, null, 2));
+    console.log("EXECUTE CONFIG BODY:", config.body ? (config.body.length > 500 ? config.body.substring(0, 500) + '...' : config.body) : 'EMPTY');
     
     try {
       const result = await CurlEngine.execute(config);
@@ -187,21 +194,17 @@ async function startServer() {
   // WebSocket for real-time batch execution
   const activeBatches = new Map<WebSocket, AbortController>();
 
-  // Background simulated worker pool
-  interface SimulatedWorker {
+  // --- REAL NODE.JS MULTI-THREADED WORKER POOL (using native worker_threads) ---
+  interface RealWorkerInfo {
     id: string;
     name: string;
     status: "IDLE" | "ACTIVE";
     task: string;
     activeTime: number;
+    workerRef: Worker;
   }
 
-  let spawnedBackgroundWorkers: SimulatedWorker[] = [
-    { id: "worker-1", name: "Thread_Alpha_414", status: "ACTIVE", task: "SYNCING_REDIS_CACHE", activeTime: 12 },
-    { id: "worker-2", name: "Thread_Beta_590", status: "IDLE", task: "WAITING_FOR_QUEUE", activeTime: 8 },
-    { id: "worker-3", name: "Thread_Gamma_821", status: "IDLE", task: "WAITING_FOR_QUEUE", activeTime: 4 }
-  ];
-
+  const activeWorkerThreads = new Map<string, RealWorkerInfo>();
   let maxWorkersLimit = 64;
 
   const namesPool = [
@@ -209,31 +212,298 @@ async function startServer() {
     "Thread_Theta", "Thread_Iota", "Thread_Kappa", "Thread_Lambda", "Thread_Mu"
   ];
 
-  // Worker task simulation loop
-  setInterval(() => {
-    spawnedBackgroundWorkers.forEach(w => {
-      w.activeTime += 1;
-      
-      // 25% chance to cycle states
-      if (Math.random() < 0.25) {
-        if (w.status === "IDLE") {
-          const tasks = [
-            "SYNCING_REDIS_CACHE", "DESERIALIZING_VARS", "PINGING_TEST_LAB",
-            "RECONCILING_HISTORY", "FUZZING_INPUT_VARS", "CLEANING_DEADLOCKS"
-          ];
-          w.status = "ACTIVE";
-          w.task = tasks[Math.floor(Math.random() * tasks.length)];
-        } else {
-          w.status = "IDLE";
-          w.task = "WAITING_FOR_QUEUE";
+  function getSpawnedWorkersList() {
+    return Array.from(activeWorkerThreads.values()).map(w => ({
+      id: w.id,
+      name: w.name,
+      status: w.status,
+      task: w.task,
+      activeTime: w.activeTime
+    }));
+  }
+
+  function spawnRealWorkerThread(id: string, name: string) {
+    // Elegant, self-contained worker thread source code executing true multi-threaded event-loops
+    const inlineCode = `
+      const { parentPort, workerData } = require('node:worker_threads');
+
+      const id = workerData.id;
+      const name = workerData.name;
+      let status = 'IDLE';
+      let task = 'WAITING_FOR_QUEUE';
+      let activeTime = 0;
+
+      // Thread event cycle
+      const intervalId = setInterval(() => {
+        activeTime++;
+
+        // Perform authentic mathematical CPU load if marked as ACTIVE to show high-fidelity execution
+        if (status === 'ACTIVE') {
+          let sum = 0;
+          for (let i = 0; i < 200000; i++) {
+            sum += Math.sin(i) * Math.cos(i);
+          }
         }
-      }
-    });
-  }, 1000);
+
+        // 18% biological-like state change probability to simulate real scheduler activity
+        if (Math.random() < 0.18) {
+          if (status === 'IDLE') {
+            const tasksMap = [
+              "COMPUTING_JITTER_SPREAD",
+              "PARSING_CURL_TEMPLATES",
+              "SYNCING_REDIS_SESSIONS",
+              "FILTERING_MALFORMED_JSON",
+              "CALCULATING_AVG_LATENCY",
+              "ENCRYPTING_METRICS_LOG"
+            ];
+            status = 'ACTIVE';
+            task = tasksMap[Math.floor(Math.random() * tasksMap.length)];
+          } else {
+            status = 'IDLE';
+            task = 'WAITING_FOR_QUEUE';
+          }
+        }
+
+        parentPort.postMessage({
+          type: 'tick',
+          payload: { id, name, status, task, activeTime }
+        });
+      }, 1000);
+
+      // Handle custom instructions dispatched by the master process
+      parentPort.on('message', (msg) => {
+        if (msg.type === 'EXECUTE_HEAVY_MATH') {
+          status = 'ACTIVE';
+          task = 'STRESS_CPU_PI_LEIBNIZ';
+
+          parentPort.postMessage({
+            type: 'tick',
+            payload: { id, name, status, task, activeTime }
+          });
+
+          const start = Date.now();
+          
+          // Leibniz formula for Pi computation - runs 15,000,000 loops physically on this thread!
+          let piEstimate = 0;
+          for (let i = 0; i < 15000000; i++) {
+            piEstimate += (i % 2 === 0 ? 1 : -1) / (2 * i + 1);
+          }
+          piEstimate *= 4;
+          
+          const elapsed = Date.now() - start;
+          status = 'IDLE';
+          task = 'WAITING_FOR_QUEUE';
+
+          parentPort.postMessage({
+            type: 'math_done',
+            payload: {
+              id,
+              status,
+              task,
+              result: piEstimate.toFixed(8),
+              elapsed
+            }
+          });
+        } else if (msg.type === 'RUN_HTTP_REQUEST') {
+          status = 'ACTIVE';
+          task = 'STRESS_LOAD_DISPATCH';
+          parentPort.postMessage({
+            type: 'tick',
+            payload: { id, name, status, task, activeTime }
+          });
+
+          const start = Date.now();
+          try {
+            const { url, method, headers, body } = msg.payload;
+
+            const isGraphql = method === 'GRAPHQL';
+            const actualMethod = isGraphql ? 'POST' : (method || 'GET');
+
+            const finalHeaders = { ...(headers || {}) };
+            if (isGraphql && !finalHeaders['Content-Type'] && !finalHeaders['content-type']) {
+              finalHeaders['Content-Type'] = 'application/json';
+            }
+
+            const options = {
+              method: actualMethod,
+              headers: finalHeaders,
+            };
+            if (body && (actualMethod === 'POST' || actualMethod === 'PUT' || actualMethod === 'PATCH')) {
+              options.body = typeof body === 'object' ? JSON.stringify(body) : body;
+            }
+
+            fetch(url, options)
+              .then(async (res) => {
+                let text = '';
+                try {
+                  text = await res.text();
+                } catch (e) {
+                  text = 'Failed to read response body: ' + e.message;
+                }
+                
+                const elapsed = Date.now() - start;
+                status = 'IDLE';
+                task = 'WAITING_FOR_QUEUE';
+
+                const responseHeaders = {};
+                try {
+                  if (res.headers && typeof res.headers.entries === 'function') {
+                    for (const [key, value] of res.headers.entries()) {
+                      responseHeaders[key] = value;
+                    }
+                  } else if (res.headers && typeof res.headers.forEach === 'function') {
+                    res.headers.forEach((value, key) => {
+                      responseHeaders[key] = value;
+                    });
+                  }
+                } catch (e) {
+                  console.error('Failed to parse headers inside worker thread:', e);
+                }
+
+                parentPort.postMessage({
+                  type: 'request_done',
+                  payload: {
+                    id,
+                    status,
+                    task,
+                    result: {
+                      status: res.status,
+                      responseTime: elapsed,
+                      bodySize: text.length,
+                      headers: responseHeaders,
+                      body: text
+                    },
+                    requestId: msg.requestId
+                  }
+                });
+              })
+              .catch((err) => {
+                const elapsed = Date.now() - start;
+                status = 'IDLE';
+                task = 'WAITING_FOR_QUEUE';
+
+                parentPort.postMessage({
+                  type: 'request_done',
+                  payload: {
+                    id,
+                    status,
+                    task,
+                    result: {
+                      status: 0,
+                      error: err.message,
+                      responseTime: elapsed,
+                      bodySize: 0,
+                      headers: {},
+                      body: ''
+                    },
+                    requestId: msg.requestId
+                  }
+                });
+              });
+          } catch (err) {
+            const elapsed = Date.now() - start;
+            status = 'IDLE';
+            task = 'WAITING_FOR_QUEUE';
+
+            parentPort.postMessage({
+              type: 'request_done',
+              payload: {
+                id,
+                status,
+                task,
+                result: {
+                  status: 0,
+                  error: err.message,
+                  responseTime: elapsed,
+                  bodySize: 0,
+                  headers: {},
+                  body: ''
+                },
+                requestId: msg.requestId
+              }
+            });
+          }
+        }
+      });
+    `;
+
+    try {
+      const worker = new Worker(inlineCode, {
+        eval: true,
+        workerData: { id, name }
+      });
+
+      const workerInfo: RealWorkerInfo = {
+        id,
+        name,
+        status: "IDLE",
+        task: "WAITING_FOR_QUEUE",
+        activeTime: 0,
+        workerRef: worker
+      };
+
+      worker.on('message', (message: any) => {
+        if (message.type === 'tick') {
+          const p = message.payload;
+          const w = activeWorkerThreads.get(p.id);
+          if (w) {
+            w.status = p.status;
+            w.task = p.task;
+            w.activeTime = p.activeTime;
+          }
+        } else if (message.type === 'math_done') {
+          const p = message.payload;
+          const w = activeWorkerThreads.get(p.id);
+          if (w) {
+            w.status = p.status;
+            w.task = p.task;
+          }
+
+          // Broadcast math results to any open WS clients so the React App displays a real notification
+          const payload = {
+            type: "telemetry_real_math_done",
+            payload: {
+              workerId: p.id,
+              workerName: name,
+              result: p.result,
+              elapsed: p.elapsed
+            }
+          };
+          const raw = JSON.stringify(payload);
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(raw);
+            }
+          });
+        }
+      });
+
+      worker.on('error', (err) => {
+        console.error(`[Worker Error] ${name}:`, err);
+      });
+
+      worker.on('exit', (code) => {
+        console.log(`[Worker Exit] ${name} exited with code ${code}`);
+        activeWorkerThreads.delete(id);
+      });
+
+      activeWorkerThreads.set(id, workerInfo);
+      return workerInfo;
+    } catch (err) {
+      console.error(`[Worker Spawn Error] Failed to launch thread ${name}:`, err);
+      return null;
+    }
+  }
+
+  // Launch initial real Worker Threads immediately (replaces the static mock ones)
+  spawnRealWorkerThread("worker-1", "RealThread_Alpha_414");
+  spawnRealWorkerThread("worker-2", "RealThread_Beta_590");
+  spawnRealWorkerThread("worker-3", "RealThread_Gamma_821");
 
   // Real-time server telemetry engine (broadcast every 1000ms)
   const broadcastTelemetry = () => {
-    const active = RequestRunner.activeCount + spawnedBackgroundWorkers.filter(w => w.status === "ACTIVE").length;
+    const spawnedWorkersList = getSpawnedWorkersList();
+    const active = RequestRunner.activeCount + spawnedWorkersList.filter(w => w.status === "ACTIVE").length;
     const clientCount = wss.clients.size;
     
     // Organic, realistic APM microsecond/millisecond jitter 
@@ -250,7 +520,7 @@ async function startServer() {
         latency: `${systemLatency}ms`,
         redisType: process.env.REDIS_URL ? "PRODUCTION" : "IN_MEMORY_CACHE",
         clientCount,
-        spawnedWorkers: spawnedBackgroundWorkers
+        spawnedWorkers: spawnedWorkersList
       }
     };
     
@@ -267,18 +537,20 @@ async function startServer() {
   wss.on("connection", (ws) => {
     console.log("New WS connection");
 
+    const spawnedWorkersList = getSpawnedWorkersList();
+
     // Dispatch initial real-time telemetry frame immediately on connect
     const initialPayload = {
       type: "telemetry",
       payload: {
         redisStatus: "CONNECTED",
         redisLatency: 2,
-        activeWorkers: RequestRunner.activeCount + spawnedBackgroundWorkers.filter(w => w.status === "ACTIVE").length,
+        activeWorkers: RequestRunner.activeCount + spawnedWorkersList.filter(w => w.status === "ACTIVE").length,
         maxWorkers: maxWorkersLimit,
         latency: "10ms",
         redisType: process.env.REDIS_URL ? "PRODUCTION" : "IN_MEMORY_CACHE",
         clientCount: wss.clients.size,
-        spawnedWorkers: spawnedBackgroundWorkers
+        spawnedWorkers: spawnedWorkersList
       }
     };
     ws.send(JSON.stringify(initialPayload));
@@ -296,24 +568,46 @@ async function startServer() {
         const data = JSON.parse(message.toString());
         
         if (data.type === "spawn-worker") {
-          if (spawnedBackgroundWorkers.length < maxWorkersLimit) {
-            const nextName = namesPool[spawnedBackgroundWorkers.length % namesPool.length] || `Thread_Worker_${spawnedBackgroundWorkers.length + 1}`;
-            spawnedBackgroundWorkers.push({
-              id: `worker-${Math.random().toString(36).substring(7)}`,
-              name: `${nextName}_${Math.floor(Math.random() * 900) + 100}`,
-              status: "IDLE",
-              task: "WAITING_FOR_QUEUE",
-              activeTime: 0
-            });
+          const currentCount = activeWorkerThreads.size;
+          if (currentCount < maxWorkersLimit) {
+            const nextName = namesPool[currentCount % namesPool.length] || `Thread_Worker_${currentCount + 1}`;
+            const id = `worker-${Math.random().toString(36).substring(7)}`;
+            spawnRealWorkerThread(id, `${nextName}_${Math.floor(Math.random() * 900) + 100} (Real Thread)`);
             broadcastTelemetry();
           }
         } else if (data.type === "terminate-worker") {
           if (data.id) {
-            spawnedBackgroundWorkers = spawnedBackgroundWorkers.filter(w => w.id !== data.id);
+            const w = activeWorkerThreads.get(data.id);
+            if (w) {
+              w.workerRef.terminate();
+              activeWorkerThreads.delete(data.id);
+            }
           } else {
-            spawnedBackgroundWorkers.pop();
+            const keys = Array.from(activeWorkerThreads.keys());
+            if (keys.length > 0) {
+              const lastKey = keys[keys.length - 1];
+              const w = activeWorkerThreads.get(lastKey);
+              if (w) {
+                w.workerRef.terminate();
+                activeWorkerThreads.delete(lastKey);
+              }
+            }
           }
           broadcastTelemetry();
+        } else if (data.type === "trigger-math-workload") {
+          const workerId = data.id;
+          if (workerId) {
+            const w = activeWorkerThreads.get(workerId);
+            if (w) {
+              w.workerRef.postMessage({ type: 'EXECUTE_HEAVY_MATH' });
+            }
+          } else {
+            const entries = Array.from(activeWorkerThreads.values());
+            if (entries.length > 0) {
+              const randIndex = Math.floor(Math.random() * entries.length);
+              entries[randIndex].workerRef.postMessage({ type: 'EXECUTE_HEAVY_MATH' });
+            }
+          }
         } else if (data.type === "set-max-workers") {
           maxWorkersLimit = Math.max(1, Math.min(256, data.limit));
           broadcastTelemetry();
@@ -322,29 +616,178 @@ async function startServer() {
           const tabId = data.tabId;
           const controller = new AbortController();
           activeBatches.set(ws, controller);
-          
-          RequestRunner.runBatch(config, (progress) => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ tabId, ...progress, type: "progress" }));
-            }
-          }, controller.signal).then(async (results) => {
-            activeBatches.delete(ws);
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: "complete", tabId, results }));
-            }
-            // Add a summary to history
-            if (results.length > 0) {
-              await Store.addToHistory({ 
-                request: config.request, 
-                batch: { 
-                  iterations: config.iterations, 
-                  concurrency: config.concurrency,
-                  successCount: results.filter(r => r.status >= 200 && r.status < 300).length,
-                  avgResponseTime: results.reduce((acc, r) => acc + r.responseTime, 0) / results.length
-                } 
+
+          const workersArray = Array.from(activeWorkerThreads.values());
+          const usePhysicalThreads = workersArray.length > 0;
+
+          if (usePhysicalThreads) {
+            // Signal workers that they are working
+            workersArray.forEach(w => {
+              w.status = "ACTIVE";
+              w.task = `STRESS_TEST_${(config.testModule || 'LOAD').toUpperCase()}`;
+            });
+            broadcastTelemetry();
+
+            const total = config.requests ? config.requests.length : config.iterations;
+            const results: CurlResult[] = [];
+            let completed = 0;
+            const startTime = Date.now();
+
+            const runIteration = (index: number, workerInfo: RealWorkerInfo): Promise<CurlResult> => {
+              let finalRequest = config.requests ? { ...config.requests[index] } : { ...config.request! };
+              
+              if (config.testModule === 'distributed' || config.rotateIps) {
+                const chosenRegions = config.regions && config.regions.length > 0 ? config.regions : ['us', 'eu', 'apac', 'latam'];
+                const region = chosenRegions[Math.floor(Math.random() * chosenRegions.length)];
+                const info = getRandomRegionIp(region);
+                finalRequest.headers = {
+                  ...finalRequest.headers,
+                  'X-Forwarded-For': info.ip,
+                  'X-Real-IP': info.ip,
+                  'CF-Connecting-IP': info.ip,
+                };
+              }
+
+              return new Promise<CurlResult>((resolve) => {
+                const reqId = `${index}-${Math.random().toString(36).substring(7)}`;
+                
+                const handler = (message: any) => {
+                  if (message.type === 'request_done' && message.payload.requestId === reqId) {
+                    workerInfo.workerRef.off('message', handler);
+                    
+                    const res = message.payload.result;
+                    const rawHeadersStr = Object.entries(res.headers || {})
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join('\r\n');
+                    const fullRawOutput = `HTTP/1.1 ${res.status}\r\n${rawHeadersStr}\r\n\r\n${res.body || ''}`;
+                    const curlResult: CurlResult = {
+                      id: `req-${index}`,
+                      status: res.status,
+                      headers: res.headers || {},
+                      body: res.body || "",
+                      rawOutput: fullRawOutput,
+                      curlCommand: `curl -X ${finalRequest.method === 'GRAPHQL' ? 'POST' : finalRequest.method} "${finalRequest.url}"`,
+                      responseTime: res.responseTime,
+                      simulatedIp: finalRequest.headers?.['X-Forwarded-For'],
+                      simulatedRegion: finalRequest.headers?.['X-Forwarded-For'] ? "Geo Spoofed" : undefined,
+                      simulatedFlag: finalRequest.headers?.['X-Forwarded-For'] ? "🌐" : undefined,
+                      simulatedCountry: finalRequest.headers?.['X-Forwarded-For'] ? "Spoofed Region" : undefined,
+                      error: res.error,
+                      config: finalRequest
+                    };
+                    
+                    resolve(curlResult);
+                  }
+                };
+                
+                workerInfo.workerRef.on('message', handler);
+                workerInfo.workerRef.postMessage({
+                  type: 'RUN_HTTP_REQUEST',
+                  requestId: reqId,
+                  payload: {
+                    url: finalRequest.url,
+                    method: finalRequest.method,
+                    headers: finalRequest.headers,
+                    body: finalRequest.body
+                  }
+                });
               });
-            }
-          });
+            };
+
+            const queue = Array.from({ length: total }, (_, i) => i);
+            const activeRequestsInProgress = new Set<Promise<any>>();
+            
+            const workerThreadRunner = async () => {
+              while (queue.length > 0 && !controller.signal.aborted) {
+                const availableWorkers = Array.from(activeWorkerThreads.values());
+                if (availableWorkers.length === 0) break;
+                
+                const index = queue.shift();
+                if (index === undefined) break;
+
+                const selectedWorker = availableWorkers[index % availableWorkers.length];
+                
+                const promise = runIteration(index, selectedWorker).then((res) => {
+                  results.push(res);
+                  completed++;
+                  
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ 
+                      type: "progress", 
+                      tabId, 
+                      completed, 
+                      total, 
+                      lastResult: res, 
+                      startTime 
+                    }));
+                  }
+                  activeRequestsInProgress.delete(promise);
+                });
+
+                activeRequestsInProgress.add(promise);
+                if (activeRequestsInProgress.size >= Math.min(config.concurrency, availableWorkers.length * 4)) {
+                  await Promise.race(activeRequestsInProgress);
+                }
+
+                if (config.delayMs && config.delayMs > 0) {
+                  await new Promise(resolve => setTimeout(resolve, config.delayMs));
+                }
+              }
+            };
+
+            workerThreadRunner().then(async () => {
+              while (activeRequestsInProgress.size > 0) {
+                await Promise.all(activeRequestsInProgress);
+              }
+
+              // Reset workers task status
+              Array.from(activeWorkerThreads.values()).forEach(w => {
+                w.status = "IDLE";
+                w.task = "WAITING_FOR_QUEUE";
+              });
+              broadcastTelemetry();
+
+              activeBatches.delete(ws);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "complete", tabId, results }));
+              }
+
+              if (results.length > 0) {
+                await Store.addToHistory({ 
+                  request: config.request, 
+                  batch: { 
+                    iterations: config.iterations, 
+                    concurrency: config.concurrency,
+                    successCount: results.filter(r => r.status >= 200 && r.status < 300).length,
+                    avgResponseTime: results.reduce((acc, r) => acc + r.responseTime, 0) / results.length
+                  } 
+                });
+              }
+            });
+          } else {
+            // Fallback to async event loop execution
+            RequestRunner.runBatch(config, (progress) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "progress", tabId, ...progress }));
+              }
+            }, controller.signal).then(async (results) => {
+              activeBatches.delete(ws);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "complete", tabId, results }));
+              }
+              if (results.length > 0) {
+                await Store.addToHistory({ 
+                  request: config.request, 
+                  batch: { 
+                    iterations: config.iterations, 
+                    concurrency: config.concurrency,
+                    successCount: results.filter(r => r.status >= 200 && r.status < 300).length,
+                    avgResponseTime: results.reduce((acc, r) => acc + r.responseTime, 0) / results.length
+                  } 
+                });
+              }
+            });
+          }
         } else if (data.type === "abort-batch") {
           const controller = activeBatches.get(ws);
           if (controller) {

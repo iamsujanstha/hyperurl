@@ -68,7 +68,7 @@ export function TestLabResultDetail({
                  <div className="text-white font-bold select-all">{selectedResult.simulatedIp}</div>
                </div>
                <div>
-                 <span className="text-slate-550 font-bold block mb-1 text-[9px]">LOCATION</span>
+                 <span className="text-slate-400 font-bold block mb-1 text-[9px]">LOCATION</span>
                  <div className="text-white font-extrabold">{selectedResult.simulatedFlag} {selectedResult.simulatedCountry}</div>
                </div>
              </div>
@@ -138,11 +138,11 @@ export function TestLabResultDetail({
                 </li>
               </ul>
               <div className="bg-black/60 p-2.5 rounded border border-rose-500/15 text-[9.5px] font-mono text-amber-305 space-y-1.5 leading-snug">
-                <div className="text-slate-550 font-bold select-none">// NestJS (Express) Rate Limitation Fix:</div>
+                <div className="text-slate-400 font-bold select-none">// NestJS (Express) Rate Limitation Fix:</div>
                 <div>
                   app.getHttpAdapter().getInstance().set(&apos;trust proxy&apos;, true);
                 </div>
-                <div className="text-slate-550 font-bold select-none mt-2">// NestJS (Fastify) Rate Limitation Fix:</div>
+                <div className="text-slate-400 font-bold select-none mt-2">// NestJS (Fastify) Rate Limitation Fix:</div>
                 <div>
                   {"const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }));"}
                 </div>
@@ -214,7 +214,7 @@ export function TestLabResultDetail({
                if (contentType.includes('image/') || bodyStr.startsWith('<svg')) {
                  return (
                    <div className="space-y-2">
-                     <div className="flex justify-between items-center text-[9px] text-slate-550 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded">
+                     <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono uppercase bg-slate-950/40 p-1.5 border border-slate-900 rounded">
                        <span className="font-bold text-blue-400 flex items-center gap-1">
                           rendered_asset
                        </span>
@@ -275,6 +275,74 @@ export function TestLabResultDetail({
             ))}
           </div>
         </div>
+
+        {/* Evaluated Assertions Report Block in Lab Detail */}
+        {(() => {
+          const assertionResults = (selectedResult as any).assertions || [];
+          if (assertionResults.length === 0) return null;
+          const passedCount = assertionResults.filter((r: any) => r.passed).length;
+          const failedCount = assertionResults.length - passedCount;
+          return (
+            <div className="space-y-2 pt-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <span className="text-slate-350 text-xs uppercase tracking-wider font-extrabold block border-b border-slate-800 pb-1.5 flex items-center justify-between">
+                <span>Validation Assertions ({assertionResults.length})</span>
+                <span className={cn(
+                  "text-[9px] font-black px-2 py-0.5 rounded uppercase leading-none font-mono tracking-wider border",
+                  failedCount === 0 
+                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" 
+                    : "bg-rose-500/15 text-rose-400 border-rose-500/20 animate-pulse"
+                )}>
+                  {failedCount === 0 ? '✓ ALL PASSED' : `✗ ${failedCount} FAILED`}
+                </span>
+              </span>
+
+              <div className="space-y-2 bg-black/40 p-3.5 rounded-lg border border-slate-850 max-h-56 overflow-y-auto custom-scrollbar">
+                {assertionResults.map((assert: any, rIdx: number) => {
+                  return (
+                    <div 
+                      key={assert.ruleId || rIdx} 
+                      className={cn(
+                        "p-2.5 rounded border font-mono text-[11px] mb-2 last:mb-0 space-y-1.5",
+                        assert.passed 
+                          ? "bg-emerald-950/10 border-emerald-950/30 text-emerald-305" 
+                          : "bg-rose-955/10 border-rose-950/30 text-rose-300"
+                      )}
+                    >
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="text-white text-xs">
+                          {assert.type === 'status' ? 'Status Code Match' :
+                           assert.type === 'latency' ? 'Max Latency SLA Check' :
+                           assert.type === 'body_contains' ? 'String Check' :
+                           assert.type === 'json_path' ? 'JSON Path Evaluator' :
+                           assert.type === 'header_matches' ? 'Headers Matcher' :
+                           'GraphQL Error Check'}
+                        </span>
+                        <span className={cn(
+                          "text-[8px] font-black px-1.5 py-0.5 rounded tracking-wide leading-none",
+                          assert.passed ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                        )}>
+                          {assert.passed ? 'PASSED' : 'FAILED'}
+                        </span>
+                      </div>
+
+                      <div className="text-[10px] text-slate-400 leading-snug">
+                        Expected: <span className="text-blue-400 font-extrabold">{assert.expected}</span>
+                        <span className="mx-1 px-1 text-slate-650 font-black">•</span>
+                        Actual: <span className={assert.passed ? "text-emerald-400 font-extrabold" : "text-rose-400 font-extrabold"}>{assert.actual === '' ? 'empty response' : assert.actual}</span>
+                      </div>
+
+                      {assert.error && (
+                        <div className="text-[10px] text-rose-400/85 font-mono italic bg-black/40 px-2 py-1 rounded border border-rose-950/25 mt-1 select-text">
+                          {assert.error}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

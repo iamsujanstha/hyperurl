@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, ChevronDown } from 'lucide-react';
+import { Sun, Moon, ChevronDown, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Telemetry } from '@/features/api-tester/types';
 
@@ -10,6 +10,8 @@ interface WorkspaceNavbarProps {
   telemetry: Telemetry;
   isWorkerPoolOpen: boolean;
   setIsWorkerPoolOpen: (open: boolean) => void;
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 export function WorkspaceNavbar({
@@ -18,24 +20,36 @@ export function WorkspaceNavbar({
   setTheme,
   telemetry,
   isWorkerPoolOpen,
-  setIsWorkerPoolOpen
+  setIsWorkerPoolOpen,
+  isSidebarCollapsed,
+  setIsSidebarCollapsed
 }: WorkspaceNavbarProps) {
   return (
-    <nav className="flex items-center justify-between px-4 h-12 border-b border-slate-850 bg-[#0F1115] shrink-0 select-none">
-      <div className="flex items-center gap-5">
+    <nav className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-slate-850 bg-[#0F1115] shrink-0 select-none">
+      <div className="flex items-center gap-2 sm:gap-5">
         <div className="flex items-center gap-2">
+          {isSidebarCollapsed && (
+            <button
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="md:hidden text-slate-400 hover:text-white p-1 cursor-pointer hover:bg-slate-800/40 rounded transition-colors active:scale-95"
+              aria-label="Open navigation sidebar"
+              type="button"
+            >
+              <Menu size={18} />
+            </button>
+          )}
           <div className="w-6 h-6 bg-emerald-500 rounded flex items-center justify-center text-black font-extrabold text-xs font-mono">H</div>
-          <span className="font-mono font-black tracking-widest text-sm uppercase text-slate-100">HYPERCURL</span>
+          <span className="font-mono font-black tracking-widest text-xs sm:text-sm uppercase text-slate-100">HYPERCURL</span>
         </div>
-        <div className="h-4 w-px bg-slate-805"></div>
-        <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
+        <div className="hidden sm:block h-4 w-px bg-slate-805"></div>
+        <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-slate-500">
           <span className="opacity-70 font-semibold uppercase">Workspace</span>
           <span className="opacity-30">/</span>
           <span className="text-emerald-400 font-bold uppercase">{view === 'debugger' ? 'API CLIENT' : view}</span>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         {/* Global Theme Toggle Switcher */}
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -51,12 +65,12 @@ export function WorkspaceNavbar({
           {theme === 'dark' ? (
             <>
               <Sun size={10} className="text-amber-400 animate-pulse" />
-              <span>LIGHT_MODE</span>
+              <span className="hidden md:inline">LIGHT_MODE</span>
             </>
           ) : (
             <>
               <Moon size={10} className="text-slate-400" />
-              <span>DARK_MODE</span>
+              <span className="hidden md:inline">DARK_MODE</span>
             </>
           )}
         </button>
@@ -68,7 +82,8 @@ export function WorkspaceNavbar({
             telemetry.redisStatus === 'CONNECTED' ? "bg-emerald-500" : "bg-rose-500"
           )}></span>
           <span className="text-[10px] font-mono text-slate-450 font-bold uppercase">
-            REDIS: {telemetry.redisStatus === 'CONNECTED' ? `CONNECTED (${telemetry.redisLatency}ms)` : 'DISCONNECTED'}
+            <span className="hidden sm:inline">REDIS: {telemetry.redisStatus === 'CONNECTED' ? `CONNECTED (${telemetry.redisLatency}ms)` : 'DISCONNECTED'}</span>
+            <span className="sm:hidden">{telemetry.redisStatus === 'CONNECTED' ? 'DB' : 'OFF'}</span>
           </span>
         </div>
 
@@ -89,7 +104,7 @@ export function WorkspaceNavbar({
             telemetry.activeWorkers > 0 ? "bg-amber-500 animate-pulse" : "bg-slate-550"
           )}></span>
           <span className="text-[10px] font-mono font-bold uppercase flex items-center gap-1">
-            Workers: {telemetry.activeWorkers} Active <ChevronDown size={11} className={cn("transition-transform duration-200", isWorkerPoolOpen && "rotate-180")} />
+            <span className="hidden sm:inline">Workers:</span> {telemetry.activeWorkers} <span className="hidden md:inline">Active</span> <ChevronDown size={11} className={cn("transition-transform duration-200", isWorkerPoolOpen && "rotate-180")} />
           </span>
         </button>
       </div>

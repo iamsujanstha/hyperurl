@@ -35,15 +35,36 @@ export class CurlEngine {
     const args = ['-i', '-s', '-L', '-X', method];
 
     // Default Headers (if not overridden)
-    const finalHeaders: Record<string, string> = {
+    const defaults: Record<string, string> = {
       'User-Agent': 'curl/7.68.0',
       'Accept': 'application/json, text/plain, */*',
       ...(isGraphql ? { 'Content-Type': 'application/json' } : {}),
-      ...config.headers
     };
 
+    const finalHeaders: Record<string, string> = {};
+    Object.entries(defaults).forEach(([k, v]) => {
+      finalHeaders[k] = v;
+    });
+
+    if (config.headers) {
+      Object.entries(config.headers).forEach(([key, value]) => {
+        if (!key) return;
+        const matchKey = Object.keys(finalHeaders).find(
+          k => k.toLowerCase() === key.toLowerCase()
+        );
+        if (matchKey) {
+          finalHeaders[matchKey] = value;
+        } else {
+          finalHeaders[key] = value;
+        }
+      });
+    }
+
     // Auto-detect JSON body if Content-Type is missing
-    if (config.body && ['POST', 'PUT', 'PATCH'].includes(config.method) && !finalHeaders['Content-Type']) {
+    const contentTypeKey = Object.keys(finalHeaders).find(
+      k => k.toLowerCase() === 'content-type'
+    );
+    if (config.body && ['POST', 'PUT', 'PATCH'].includes(config.method) && !contentTypeKey) {
       try {
         JSON.parse(config.body);
         finalHeaders['Content-Type'] = 'application/json';
@@ -97,15 +118,36 @@ export class CurlEngine {
       const method = isGraphql ? 'POST' : config.method;
 
       // Prepare request headers
-      const finalHeaders: Record<string, string> = {
+      const defaults: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         ...(isGraphql ? { 'Content-Type': 'application/json' } : {}),
-        ...config.headers
       };
 
+      const finalHeaders: Record<string, string> = {};
+      Object.entries(defaults).forEach(([k, v]) => {
+        finalHeaders[k] = v;
+      });
+
+      if (config.headers) {
+        Object.entries(config.headers).forEach(([key, value]) => {
+          if (!key) return;
+          const matchKey = Object.keys(finalHeaders).find(
+            k => k.toLowerCase() === key.toLowerCase()
+          );
+          if (matchKey) {
+            finalHeaders[matchKey] = value;
+          } else {
+            finalHeaders[key] = value;
+          }
+        });
+      }
+
       // Auto-detect JSON body if Content-Type is missing
-      if (config.body && ['POST', 'PUT', 'PATCH'].includes(config.method) && !finalHeaders['Content-Type']) {
+      const contentTypeKey = Object.keys(finalHeaders).find(
+        k => k.toLowerCase() === 'content-type'
+      );
+      if (config.body && ['POST', 'PUT', 'PATCH'].includes(config.method) && !contentTypeKey) {
         try {
           JSON.parse(config.body);
           finalHeaders['Content-Type'] = 'application/json';

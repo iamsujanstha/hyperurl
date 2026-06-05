@@ -6,6 +6,7 @@ import {
 import { cn } from '@/lib/utils';
 import { RequestConfig, CurlResult } from '@/server/modules/curl-engine';
 import { ProgressUpdate } from '@/server/modules/runner';
+import { Telemetry } from '@/features/api-tester/types';
 
 import { 
   TEST_MODULES as STATIC_TEST_MODULES, 
@@ -58,9 +59,10 @@ interface TestLabProps {
   onAbort: () => void;
   onChangeConfig?: (updates: Partial<RequestConfig>) => void;
   onClearLogs?: () => void;
+  telemetry: Telemetry;
 }
 
-export function TestLab({ config, headersList, ws, activeTabId, loading, progress, results, onStart, onAbort, onChangeConfig, onClearLogs }: TestLabProps) {
+export function TestLab({ config, headersList, ws, activeTabId, loading, progress, results, onStart, onAbort, onChangeConfig, onClearLogs, telemetry }: TestLabProps) {
   const [selectedModule, setSelectedModule] = useState<TestModuleId>('basic_query');
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
   const [payloadTab, setPayloadTab] = useState<'pretty' | 'raw'>('pretty');
@@ -68,9 +70,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [concurrency, setConcurrency] = useState(5);
   const [retries, setRetries] = useState(0);
   const [labTab, setLabTab] = useState<'logs' | 'curl' | 'theory'>('logs');
-  const [assertions, setAssertions] = useState<{ id: string, type: string, value: string }[]>([
-    { id: '1', type: 'STATUS_CODE', value: '200' }
-  ]);
+
   const [fuzzerChecks, setFuzzerChecks] = useState({ keyDeletions: true, typeMutations: true, bufferOverflow: false });
   const [securityChecks, setSecurityChecks] = useState({ sqli: true, xss: true, pathTraversal: true, headersAuditor: true });
   const [chaosAmplitude, setChaosAmplitude] = useState(60);
@@ -79,6 +79,21 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'perf' | 'resilience' | 'security'>('all');
   const [logDetailWidth, setLogDetailWidth] = useState(560);
   const [isDraggingLogDetail, setIsDraggingLogDetail] = useState(false);
+
+  const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [activeMobileTab, setActiveMobileTab] = useState<'config' | 'results'>('config');
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (loading) {
+      setActiveMobileTab('results');
+    }
+  }, [loading]);
 
   useEffect(() => {
     if (!isDraggingLogDetail) return;
@@ -199,18 +214,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       const reg = regions[key];
       if (reg) {
         reg.count++;
-        let fails = 0;
-        assertions.forEach(a => {
-          if (a.type === 'STATUS_CODE') {
-            if (r.status.toString() !== a.value) fails++;
-          } else if (a.type === 'LATENCY_LESS_THAN') {
-            const limit = parseInt(a.value) || 1000;
-            if (r.responseTime >= limit) fails++;
-          } else if (a.type === 'CONTAINS_TEXT') {
-            if (!(r.body && r.body.toLowerCase().includes(a.value.toLowerCase()))) fails++;
-          }
-        });
-        if (fails === 0) reg.ok++;
+        if (r.status < 400) reg.ok++;
         reg.sumTime += r.responseTime;
       }
     });
@@ -221,87 +225,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       avgTime: val.count > 0 ? Math.round(val.sumTime / val.count) : 0,
       successPct: val.count > 0 ? Math.round((val.ok / val.count) * 100) : 0
     }));
-  }, [results, selectedModule, assertions]);
-
-  // Assertion evaluator
-  const checkAssertion = (res: CurlResult, assertion: { type: string, value: string }) => {
-    if (assertion.type === 'STATUS_CODE') {
-      return res.status.toString() === assertion.value;
-    }
-    if (assertion.type === 'LATENCY_LESS_THAN') {
-      const limit = parseInt(assertion.value) || 1000;
-      return res.responseTime < limit;
-    }
-    if (assertion.type === 'CONTAINS_TEXT') {
-      return !!(res.body && res.body.toLowerCase().includes(assertion.value.toLowerCase()));
-    }
-    if (assertion.type === 'HEADER_EXISTS') {
-      return !!(res.headers && res.headers[assertion.value.toLowerCase()] !== undefined);
-    }
-    if (assertion.type === 'HEADER_VALUE') {
-      const parts = assertion.value.split(':');
-      if (parts.length >= 2) {
-        const name = parts[0].trim().toLowerCase();
-        const expectedVal = parts.slice(1).join(':').trim().toLowerCase();
-        return !!(res.headers && res.headers[name] !== undefined && res.headers[name].toLowerCase().includes(expectedVal));
-      }
-      return false;
-    }
-    if (assertion.type === 'SCHEMA_KEY') {
-      if (!res.body) return false;
-      try {
-        const json = JSON.parse(res.body);
-        const searchPath = assertion.value.trim();
-        
-        const resolvePath = (obj: any, path: string): boolean => {
-          let current = obj;
-          const steps = path.split('.');
-          for (const step of steps) {
-            if (current === null || typeof current !== 'object') return false;
-            if (Array.isArray(current)) {
-              if (step === 'length') return current.length > 0;
-              const index = parseInt(step, 10);
-              if (!isNaN(index)) {
-                current = current[index];
-                continue;
-              }
-              return current.some(item => resolvePath(item, step));
-            }
-            if (!(step in current)) return false;
-            current = current[step];
-          }
-          return current !== undefined;
-        };
-
-        return resolvePath(json, searchPath);
-      } catch (e) {
-        return false;
-      }
-    }
-    if (assertion.type === 'HTTPS_ENFORCED') {
-      const hasHttps = (config.url || '').toLowerCase().startsWith('https://');
-      return hasHttps;
-    }
-    if (assertion.type === 'IDEMPOTENCY_MATCH') {
-      const bodyClean = (res.body || '').toLowerCase();
-      const hasIdemHeader = !!(res.headers && (
-        res.headers['idempotency-key'] !== undefined ||
-        res.headers['x-idempotency-key'] !== undefined ||
-        res.headers['x-cache'] !== undefined
-      ));
-      const okStatus = res.status < 300;
-      return hasIdemHeader || okStatus || bodyClean.includes('idempotency') || bodyClean.includes('duplicate');
-    }
-    return true;
-  };
-
-  const getFailedAssertionsCount = (res: CurlResult) => {
-    let failCount = 0;
-    assertions.forEach(a => {
-      if (!checkAssertion(res, a)) failCount++;
-    });
-    return failCount;
-  };
+  }, [results, selectedModule]);
 
   const startTest = () => {
     let backendModuleId: string = selectedModule;
@@ -320,7 +244,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       iterations: finalIterations,
       concurrency: finalConcurrency,
       retries,
-      assertions: assertions.map(a => ({ type: a.type, value: a.value })),
+      assertions: [],
       fuzzerChecks,
       securityChecks,
       regions: selectedRegions,
@@ -337,20 +261,6 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-  };
-
-  const addAssertion = () => {
-    setAssertions([...assertions, { id: Date.now().toString(), type: 'STATUS_CODE', value: '200' }]);
-  };
-
-  const removeAssertion = (id: string) => {
-    if (assertions.length > 1) {
-      setAssertions(assertions.filter(a => a.id !== id));
-    }
-  };
-
-  const updateAssertion = (id: string, updates: Partial<{ type: string, value: string }>) => {
-    setAssertions(assertions.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
   const securityAudit = useMemo(() => {
@@ -569,44 +479,79 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
         </div>
       </div>
 
+      {/* Mobile view sub-segmented control tabs (Config vs Results) */}
+      <div className="lg:hidden flex bg-[#0E121A] border-b border-slate-850 p-1.5 shrink-0 h-11 items-center gap-1.5 select-none w-full">
+        <button
+          onClick={() => setActiveMobileTab('config')}
+          className={cn(
+            "flex-1 py-1.5 px-3 rounded text-[11px] font-mono font-black uppercase transition-all tracking-wider text-center cursor-pointer",
+            activeMobileTab === 'config'
+              ? "bg-[#1E293B] text-emerald-400 border border-emerald-500/25 shadow-sm"
+              : "text-slate-500 hover:text-slate-300"
+          )}
+          type="button"
+        >
+          TEST CONFIG
+        </button>
+        <button
+          onClick={() => setActiveMobileTab('results')}
+          className={cn(
+            "flex-1 py-1.5 px-3 rounded text-[11px] font-mono font-black uppercase transition-all tracking-wider text-center cursor-pointer relative",
+            activeMobileTab === 'results'
+              ? "bg-[#1E293B] text-emerald-400 border border-emerald-500/25 shadow-sm"
+              : "text-slate-500 hover:text-slate-300"
+          )}
+          type="button"
+        >
+          LIVE FEED
+          {loading && (
+            <span className="absolute right-3.5 top-2.5 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          )}
+        </button>
+      </div>
+
       {/* Main Multi-Pane Workspace Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* PANEL 2: Left Sidebar Config & Controls */}
-        <TestLabSidebar 
-          config={config}
-          loading={loading}
-          selectedModule={selectedModule}
-          setSelectedModule={setSelectedModule}
-          setSelectedResult={setSelectedResult}
-          concurrency={concurrency}
-          setConcurrency={setConcurrency}
-          iterationsPerUser={iterationsPerUser}
-          setIterationsPerUser={setIterationsPerUser}
-          retries={retries}
-          setRetries={setRetries}
-          securityChecks={securityChecks}
-          setSecurityChecks={setSecurityChecks}
-          fuzzerChecks={fuzzerChecks}
-          setFuzzerChecks={setFuzzerChecks}
-          chaosAmplitude={chaosAmplitude}
-          setChaosAmplitude={setChaosAmplitude}
-          selectedRegions={selectedRegions}
-          setSelectedRegions={setSelectedRegions}
-          selectedPresetId={selectedPresetId}
-          setSelectedPresetId={setSelectedPresetId}
-          assertions={assertions}
-          addAssertion={addAssertion}
-          removeAssertion={removeAssertion}
-          updateAssertion={updateAssertion}
-          setAssertions={setAssertions}
-          curlStrategy={curlStrategy}
-          onStartTest={startTest}
-          onAbort={onAbort}
-          onChangeConfig={onChangeConfig}
-        />
+        <div className={cn(
+          "bg-[#0F1115]",
+          windowWidth >= 1024 ? "w-[300px] shrink-0 border-r border-[#1E293B] h-full" : (activeMobileTab === 'config' ? "w-full overflow-y-auto" : "hidden")
+        )}>
+          <TestLabSidebar 
+            config={config}
+            loading={loading}
+            selectedModule={selectedModule}
+            setSelectedModule={setSelectedModule}
+            setSelectedResult={setSelectedResult}
+            concurrency={concurrency}
+            setConcurrency={setConcurrency}
+            iterationsPerUser={iterationsPerUser}
+            setIterationsPerUser={setIterationsPerUser}
+            retries={retries}
+            setRetries={setRetries}
+            securityChecks={securityChecks}
+            setSecurityChecks={setSecurityChecks}
+            fuzzerChecks={fuzzerChecks}
+            setFuzzerChecks={setFuzzerChecks}
+            chaosAmplitude={chaosAmplitude}
+            setChaosAmplitude={setChaosAmplitude}
+            selectedRegions={selectedRegions}
+            setSelectedRegions={setSelectedRegions}
+            selectedPresetId={selectedPresetId}
+            setSelectedPresetId={setSelectedPresetId}
+            curlStrategy={curlStrategy}
+            onStartTest={startTest}
+            onAbort={onAbort}
+            onChangeConfig={onChangeConfig}
+            telemetry={telemetry}
+          />
+        </div>
 
         {/* PANEL 3: Right Live Telemetry Screen */}
-        <div className="flex-1 bg-[#07080A] flex flex-col overflow-hidden">
+        <div className={cn(
+          "bg-[#07080A] flex flex-col overflow-hidden",
+          windowWidth >= 1024 ? "flex-1 h-full" : (activeMobileTab === 'results' ? "w-full flex-1" : "hidden")
+        )}>
           {/* Telemetry values with clean typography */}
           <div className="p-5 border-b border-slate-800 bg-black/60 grid grid-cols-2 md:grid-cols-4 gap-6 select-none shadow-[inset_0_-2px_10px_rgba(0,0,0,0.5)] shrink-0">
              <div className="space-y-1.5 border-r border-slate-900 pr-4">
@@ -687,7 +632,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                       loading={loading}
                       progress={progress}
                       selectedModule={selectedModule}
-                      assertions={assertions}
+                      
                       percentiles={percentiles}
                       latencyCategories={latencyCategories}
                       regionalBreakdown={regionalBreakdown}
@@ -699,7 +644,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
                       setPayloadTab={setPayloadTab}
                       logDetailWidth={logDetailWidth}
                       setIsDraggingLogDetail={setIsDraggingLogDetail}
-                      getFailedAssertionsCount={getFailedAssertionsCount}
+                      
                       handleClearLogs={handleClearLogs}
                       config={config}
                     />

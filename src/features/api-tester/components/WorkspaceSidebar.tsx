@@ -18,14 +18,32 @@ export function WorkspaceSidebar({
   setView,
   createTab
 }: WorkspaceSidebarProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const animatedWidth = isMobile 
+    ? (isSidebarCollapsed ? '0px' : '220px')
+    : (isSidebarCollapsed ? '52px' : '220px');
+
   return (
     <motion.aside 
       initial={false}
-      animate={{ width: isSidebarCollapsed ? '52px' : '220px' }}
-      className="border-r border-slate-850 bg-[#0F1115] flex flex-col shrink-0 overflow-hidden relative z-20"
+      animate={{ width: animatedWidth }}
+      className={cn(
+        "border-r border-slate-850 bg-[#0F1115] flex flex-col shrink-0 overflow-hidden z-40 transition-all",
+        isMobile ? "absolute top-0 bottom-0 left-0 h-full shadow-2xl" : "relative"
+      )}
     >
       <div className="h-12 flex items-center justify-between px-3.5 border-b border-slate-900/40 shrink-0">
-        {!isSidebarCollapsed && (
+        {(!isSidebarCollapsed || !isMobile) && (
           <span className="text-[10px] font-black tracking-[0.4em] text-white uppercase flex items-center gap-2 select-none">
             <Terminal size={14} className="text-emerald-500 animate-pulse" /> HYPERCURL
           </span>
@@ -33,7 +51,7 @@ export function WorkspaceSidebar({
         <button 
           type="button"
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="text-slate-500 hover:text-white transition-colors p-1 cursor-pointer hover:bg-slate-800/40 rounded"
+          className="text-slate-500 hover:text-white transition-colors p-1 cursor-pointer hover:bg-slate-800/40 rounded ml-auto"
           aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isSidebarCollapsed ? <Plus size={16} className="rotate-45 text-emerald-500" /> : <ChevronLeft size={16} />}
