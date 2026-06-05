@@ -67,11 +67,8 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const [selectedModule, setSelectedModule] = useState<TestModuleId>('basic_query');
 
   const results = useMemo(() => {
-    if (loading && rawResults && rawResults.length > 0) {
-      return rawResults;
-    }
     return labResults[selectedModule] || [];
-  }, [labResults, selectedModule, loading, rawResults]);
+  }, [labResults, selectedModule]);
 
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
   const [payloadTab, setPayloadTab] = useState<'pretty' | 'raw'>('pretty');

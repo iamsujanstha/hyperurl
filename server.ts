@@ -664,7 +664,7 @@ async function startServer() {
                       .join('\r\n');
                     const fullRawOutput = `HTTP/1.1 ${res.status}\r\n${rawHeadersStr}\r\n\r\n${res.body || ''}`;
                     const curlResult: CurlResult = {
-                      id: `req-${index}`,
+                      id: `req-${index}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                       status: res.status,
                       headers: res.headers || {},
                       body: res.body || "",

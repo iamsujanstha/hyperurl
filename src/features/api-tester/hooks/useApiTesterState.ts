@@ -23,6 +23,7 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
             ...t,
             results: Array.isArray(t.results) ? t.results : (t.result ? [t.result] : []),
             batchResults: Array.isArray(t.batchResults) ? t.batchResults : [],
+            labResults: t.labResults || {},
             batchMode: !!t.batchMode,
             showCurl: !!t.showCurl,
             loading: false,
@@ -322,16 +323,23 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
               if (lastResult) {
                 lastResult.assertions = evaluateAssertions(lastResult, t.assertions || []);
               }
-              const nextBatchResults = lastResult ? [...(Array.isArray(t.batchResults) ? t.batchResults : []), lastResult] : t.batchResults;
               const moduleKey = data.uiModule || data.testModule || 'blast';
+              const currentLabResults = t.labResults?.[moduleKey] || [];
+              const existingIds = new Set(currentLabResults.map((r: any) => r.id));
+              
+              let nextLabResultsForModule = currentLabResults;
+              if (lastResult && !existingIds.has(lastResult.id)) {
+                nextLabResultsForModule = [...currentLabResults, lastResult];
+              }
+
               const nextLabResults = {
                 ...(t.labResults || {}),
-                [moduleKey]: nextBatchResults
+                [moduleKey]: nextLabResultsForModule
               };
               return {
                 ...t,
                 progress: { ...data, startTime: data.startTime || Date.now() },
-                batchResults: nextBatchResults,
+                batchResults: nextLabResultsForModule,
                 labResults: nextLabResults
               };
             }
@@ -341,18 +349,24 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
           const tabId = data.tabId || activeTabIdRef.current;
           setTabs(prev => prev.map(t => {
             if (t.id === tabId) {
-              const evaluated = (data.results || t.batchResults || []).map((r: any) => ({
+              const moduleKey = data.uiModule || data.testModule || 'blast';
+              const currentLabResults = t.labResults?.[moduleKey] || [];
+              const existingIds = new Set(currentLabResults.map((r: any) => r.id));
+
+              const newResults = (data.results || []).filter((r: any) => !existingIds.has(r.id));
+              const evaluatedNew = newResults.map((r: any) => ({
                 ...r,
                 assertions: evaluateAssertions(r, t.assertions || [])
               }));
-              const moduleKey = data.uiModule || data.testModule || 'blast';
+
+              const nextLabResultsForModule = [...currentLabResults, ...evaluatedNew];
               const nextLabResults = {
                 ...(t.labResults || {}),
-                [moduleKey]: evaluated
+                [moduleKey]: nextLabResultsForModule
               };
               return { 
                 ...t, 
-                batchResults: evaluated,
+                batchResults: nextLabResultsForModule,
                 labResults: nextLabResults,
                 progress: null, 
                 loading: false 
@@ -860,7 +874,15 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
 
   const handleStartLabTest = (moduleId: string, settings: any) => {
     if (!ws || !activeTab) return;
-    updateActiveTab({ loading: true, batchResults: [] });
+    const nextLabResults = {
+      ...(activeTab.labResults || {}),
+      [moduleId]: []
+    };
+    updateActiveTab({ 
+      loading: true,
+      batchResults: [],
+      labResults: nextLabResults
+    });
     ws.send(JSON.stringify({
       type: 'run-batch',
       tabId: activeTabId,
