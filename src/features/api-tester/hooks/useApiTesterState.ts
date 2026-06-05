@@ -322,10 +322,17 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
               if (lastResult) {
                 lastResult.assertions = evaluateAssertions(lastResult, t.assertions || []);
               }
+              const nextBatchResults = lastResult ? [...(Array.isArray(t.batchResults) ? t.batchResults : []), lastResult] : t.batchResults;
+              const moduleKey = data.uiModule || data.testModule || 'blast';
+              const nextLabResults = {
+                ...(t.labResults || {}),
+                [moduleKey]: nextBatchResults
+              };
               return {
                 ...t,
                 progress: { ...data, startTime: data.startTime || Date.now() },
-                batchResults: lastResult ? [...(Array.isArray(t.batchResults) ? t.batchResults : []), lastResult] : t.batchResults
+                batchResults: nextBatchResults,
+                labResults: nextLabResults
               };
             }
             return t;
@@ -338,9 +345,15 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
                 ...r,
                 assertions: evaluateAssertions(r, t.assertions || [])
               }));
+              const moduleKey = data.uiModule || data.testModule || 'blast';
+              const nextLabResults = {
+                ...(t.labResults || {}),
+                [moduleKey]: evaluated
+              };
               return { 
                 ...t, 
-                batchResults: evaluated, 
+                batchResults: evaluated,
+                labResults: nextLabResults,
                 progress: null, 
                 loading: false 
               };
@@ -853,7 +866,8 @@ export function useApiTesterState(initialVariables: Record<string, string> = {})
       tabId: activeTabId,
       payload: {
         request: getResolvedConfig(activeTab),
-        testModule: moduleId,
+        testModule: settings.backendModuleId || moduleId,
+        uiModule: moduleId,
         iterations: settings.iterations,
         concurrency: settings.concurrency,
         retries: settings.retries,

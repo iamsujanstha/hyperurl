@@ -170,10 +170,27 @@ export function ApiTester({ variables: initialVariables = {} }: { variables?: Re
                   loading={activeTab.loading}
                   progress={activeTab.progress}
                   results={activeTab.batchResults}
+                  labResults={activeTab.labResults || {}}
                   onStart={handleStartLabTest}
                   onAbort={handleAbort}
                   onChangeConfig={updateActiveConfig}
-                  onClearLogs={() => updateActiveTab({ batchResults: [], progress: null })}
+                  onClearLogs={(modId?: string) => {
+                    if (modId) {
+                      const nextLabResults = { ...(activeTab.labResults || {}) };
+                      delete nextLabResults[modId];
+                      updateActiveTab({ 
+                        batchResults: [], 
+                        progress: null, 
+                        labResults: nextLabResults 
+                      });
+                    } else {
+                      updateActiveTab({ 
+                        batchResults: [], 
+                        progress: null, 
+                        labResults: {} 
+                      });
+                    }
+                  }}
                   telemetry={telemetry}
                 />
               </motion.div>

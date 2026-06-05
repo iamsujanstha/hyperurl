@@ -90,6 +90,7 @@ export interface Tab {
   assertions?: AssertionRule[];
   extractors?: ResponseExtractorRule[];
   authConfig?: AuthConfig;
+  labResults?: Record<string, CurlResult[]>;
 }
 
 export interface Telemetry {

@@ -718,6 +718,8 @@ async function startServer() {
                     ws.send(JSON.stringify({ 
                       type: "progress", 
                       tabId, 
+                      testModule: config.testModule,
+                      uiModule: config.uiModule,
                       completed, 
                       total, 
                       lastResult: res, 
@@ -752,7 +754,7 @@ async function startServer() {
 
               activeBatches.delete(ws);
               if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "complete", tabId, results }));
+                ws.send(JSON.stringify({ type: "complete", tabId, testModule: config.testModule, uiModule: config.uiModule, results }));
               }
 
               if (results.length > 0) {
@@ -771,12 +773,12 @@ async function startServer() {
             // Fallback to async event loop execution
             RequestRunner.runBatch(config, (progress) => {
               if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "progress", tabId, ...progress }));
+                ws.send(JSON.stringify({ type: "progress", tabId, testModule: config.testModule, uiModule: config.uiModule, ...progress }));
               }
             }, controller.signal).then(async (results) => {
               activeBatches.delete(ws);
               if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "complete", tabId, results }));
+                ws.send(JSON.stringify({ type: "complete", tabId, testModule: config.testModule, uiModule: config.uiModule, results }));
               }
               if (results.length > 0) {
                 await Store.addToHistory({ 

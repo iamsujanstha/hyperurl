@@ -8,6 +8,7 @@ export interface BatchConfig {
   delayMs?: number;
   // Lab Options
   testModule?: string;
+  uiModule?: string;
   jitter?: boolean;
   fuzzing?: boolean;
   retries?: number;

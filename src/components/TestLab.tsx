@@ -55,15 +55,24 @@ interface TestLabProps {
   loading: boolean;
   progress: ProgressUpdate | null;
   results: CurlResult[];
+  labResults?: Record<string, CurlResult[]>;
   onStart: (moduleId: string, settings: any) => void;
   onAbort: () => void;
   onChangeConfig?: (updates: Partial<RequestConfig>) => void;
-  onClearLogs?: () => void;
+  onClearLogs?: (modId?: string) => void;
   telemetry: Telemetry;
 }
 
-export function TestLab({ config, headersList, ws, activeTabId, loading, progress, results, onStart, onAbort, onChangeConfig, onClearLogs, telemetry }: TestLabProps) {
+export function TestLab({ config, headersList, ws, activeTabId, loading, progress, results: rawResults, labResults = {}, onStart, onAbort, onChangeConfig, onClearLogs, telemetry }: TestLabProps) {
   const [selectedModule, setSelectedModule] = useState<TestModuleId>('basic_query');
+
+  const results = useMemo(() => {
+    if (loading && rawResults && rawResults.length > 0) {
+      return rawResults;
+    }
+    return labResults[selectedModule] || [];
+  }, [labResults, selectedModule, loading, rawResults]);
+
   const [selectedResult, setSelectedResult] = useState<CurlResult | null>(null);
   const [payloadTab, setPayloadTab] = useState<'pretty' | 'raw'>('pretty');
   const [iterationsPerUser, setIterationsPerUser] = useState(5);
@@ -94,6 +103,15 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       setActiveMobileTab('results');
     }
   }, [loading]);
+
+  const onClearLogsRef = React.useRef(onClearLogs);
+  useEffect(() => {
+    onClearLogsRef.current = onClearLogs;
+  }, [onClearLogs]);
+
+  useEffect(() => {
+    setSelectedResult(null);
+  }, [selectedModule]);
 
   useEffect(() => {
     if (!isDraggingLogDetail) return;
@@ -240,7 +258,8 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
       backendModuleId = 'blast';
     }
 
-    onStart(backendModuleId, {
+    onStart(selectedModule, {
+      backendModuleId,
       iterations: finalIterations,
       concurrency: finalConcurrency,
       retries,
@@ -255,7 +274,7 @@ export function TestLab({ config, headersList, ws, activeTabId, loading, progres
   const handleClearLogs = () => {
     setSelectedResult(null);
     if (onClearLogs) {
-      onClearLogs();
+      onClearLogs(selectedModule);
     }
   };
 
