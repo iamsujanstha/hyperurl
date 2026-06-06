@@ -90,8 +90,32 @@ export function NetworkLogViewer({
         <div className="flex-1 overflow-y-auto p-3 px-4 custom-scrollbar space-y-1.5 bg-[#07080A]/40">
           <AnimatePresence initial={false}>
 
-            {/* Display chronological list, first hit at the top, latest hit at bottom */}
-            {filteredResults.slice(-50).map((res, i) => {
+            {/* Pulsing Pending Line at top of logs queue while fetching next result */}
+            {loading && (
+              <motion.div 
+                key="pending"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group flex border-l-2 border-amber-500 bg-amber-500/10 py-2 px-3 items-center min-h-[40px] gap-3 rounded-r text-amber-400"
+              >
+                <span className="text-slate-505 text-xs font-mono w-6 shrink-0">#{results.length + 1}</span>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="bg-[#FFAA00]/10 text-[#FFAA00] border border-[#FFAA00]/25 text-[9px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wide animate-pulse font-mono">
+                    SEND
+                  </span>
+                  <span className="font-mono text-xs text-[#FFAA00]/70 truncate tracking-tight animate-pulse">
+                    Requesting transmission...
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <RefreshCw size={11} className="text-amber-500 animate-spin" aria-hidden="true" />
+                  <span className="text-xs font-mono text-amber-400/70 font-semibold">PENDING</span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Display chronological list reversed so latest is on top */}
+            {[...filteredResults].slice(-50).reverse().map((res, i) => {
               const originalIndex = results.findIndex(r => r.id === res.id) + 1;
               const rt = res.responseTime;
               const isSelected = selectedResult?.id === res.id;
@@ -187,30 +211,6 @@ export function NetworkLogViewer({
                 </motion.div>
               );
             })}
-
-            {/* Pulsing Pending Line at bottom of logs queue while fetching next result */}
-            {loading && (
-              <motion.div 
-                key="pending"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="group flex border-l-2 border-amber-500 bg-amber-500/10 py-2 px-3 items-center min-h-[40px] gap-3 rounded-r text-amber-400"
-              >
-                <span className="text-slate-505 text-xs font-mono w-6 shrink-0">#{results.length + 1}</span>
-                <div className="flex-1 min-w-0 flex items-center gap-2">
-                  <span className="bg-[#FFAA00]/10 text-[#FFAA00] border border-[#FFAA00]/25 text-[9px] font-black px-1.5 py-0.5 rounded-[2px] leading-none tracking-wide animate-pulse font-mono">
-                    SEND
-                  </span>
-                  <span className="font-mono text-xs text-[#FFAA00]/70 truncate tracking-tight animate-pulse">
-                    Requesting transmission...
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <RefreshCw size={11} className="text-amber-500 animate-spin" aria-hidden="true" />
-                  <span className="text-xs font-mono text-amber-400/70 font-semibold">PENDING</span>
-                </div>
-              </motion.div>
-            )}
           </AnimatePresence>
         </div>
       </div>

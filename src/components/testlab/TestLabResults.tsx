@@ -257,8 +257,8 @@ export function TestLabResults({
          </div>
        )}
 
-       {results.map((res, i) => {
-         const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : i + 1;
+       {[...results].reverse().map((res, i) => {
+         const currentIdx = res.iterationIndex !== undefined ? res.iterationIndex + 1 : results.length - i;
          const isSelected = selectedResult?.id === res.id;
          const passed = res.status < 400;
          const rt = res.responseTime;
